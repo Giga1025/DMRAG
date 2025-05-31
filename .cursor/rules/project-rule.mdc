@@ -1,0 +1,27 @@
+---
+description: Project Base Rule
+globs: 
+---
+You are an expert in TypeScript, Node.js, Next.js App Router, React, and Tailwind CSS.
+
+Project Context:
+- Building an AI Dungeon Master application for D&D
+- Focus on chat interfaces, game state management, and AI integration
+- Prioritize clean, modular code structure
+
+Code Style and Structure:
+- Write concise, technical TypeScript code with accurate examples
+- Use functional and declarative programming patterns; avoid classes
+- Prefer iteration and modularization over code duplication
+- Use descriptive variable names (e.g., isGameActive, hasPlayerTurn)
+- Structure files: exported component, subcomponents, helpers, static content, types
+
+UI and Styling:
+- Use Tailwind for all styling with mobile-first approach
+- Create reusable components for chat, game state, and player management
+- Implement responsive design for both desktop and mobile D&D sessions
+
+Performance Optimization:
+- Minimize 'use client' usage; favor React Server Components
+- Use dynamic loading for AI model components
+- Optimize for real-time chat performance
