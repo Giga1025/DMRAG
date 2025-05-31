@@ -1,0 +1,29 @@
+{
+    "campaigns": [
+      {
+        "title": "Lost Mine of Phandelver",
+        "filterTitle": "lost_mine_of_phandelver",
+        "initialDescription": "In the city of Neverwinter, a dwarf named Gundren Rockseeker asked you to bring a wagonload of provisions to the rough-and-tumble settlement of Phandalin, a couple of days' travel southeast of the city. Gundren was clearly excited and more than a little secretive about his reasons for the trip, saying only that he and his brothers had found 'something big,' and that he'd pay you ten gold pieces each for escorting his supplies safely to Barthen's Provisions, a trading post in Phandalin. He then set out ahead of you on horse, along with a warrior escort named Sildar Hallwinter, claiming he needed to arrive early to 'take care of business.' You've spent the last few days following the High Road south from Neverwinter, and you've just recently veered east along the Triboar Trail. You've encountered no trouble so far, but this territory can be dangerous. Bandits and outlaws have been known to lurk along the trail.",
+        "summary": "Lost Mine of Phandelver is a classic adventure where your party is hired to escort supplies to a frontier town, only to be drawn into a web of goblin ambushes, criminal gangs, and missing dwarven miners. Your journey will take you from the small town of Phandalin through monster-filled wilderness to an ancient, magical mine where you'll confront a mysterious drow villain known as the Black Spider who seeks to control a legendary magical forge-perfect for new players with its balanced mix of combat, exploration, and roleplaying opportunities."
+      },
+      {
+        "title": "Curse of Strahd",
+        "filterTitle": "curse_of_strahd",
+        "initialDescription": "The characters are pulled into Strahd’s domain by the mists of Ravenloft. Forced to follow a lonely road, they eventually arrive at the village of Barovia. The gravel road leads to a village, its tall houses dark as tombstones. Nestled among these solemn dwellings are a handful of closed-up shops. Even the tavern is shut tight. A soft whimpering draws your eye toward a pair of children standing in the middle of an otherwise lifeless street.",
+        "summary": "Death House is a haunted mansion adventure where your party is lured by the ghosts of two children into a house of horrors, filled with deadly secrets and supernatural terrors. Trapped within its walls by dark magic, you must uncover the mansion's disturbing history and confront the evil in its basement to escape-if you survive the house's attempts to claim you as its next victims."
+      },
+      {
+        "title": "Elfhunt",
+        "filterTitle": "ElfHunt",
+        "initialDescription": "You are invited to Johan Petry’s House. The large single-room hall has walls lined with trophies of monsters killed, most by Johan Petry. There’s an empty board on the wall and a quest book on the large oak table in the middle of the room, which is lit by a combination of sunlight from the large window across the hall and the large fireplace that roars and mainly gives light rather than heat. An elderly man approaches you and introduces himself as Johan Petry. He has a quest for you.",
+        "summary": "Elfhunt is a thrilling jungle adventure where your party is hired to track down an elven woman who has fled Camp Highmore with stolen military secrets. Set in the dangerous wilds of Chult, this adventure plunges you into political intrigue, betrayal, and a chase that leads from a corrupt trading outpost through treacherous jungles and into the mysterious Feywild-where you'll discover that nothing about your mission is quite what it seems"
+      },
+      {
+        "title": "Dues for the Dead",
+        "filterTitle": "DuesfortheDead",
+        "initialDescription": "The graveyard is the only notable feature of Phlan that sits north of the river. Most of the city is on what's presumed to be an artificial island; sometime in the dim past, Phlan's original builders dug a canal to split the Stojanow River into two channels at its mouth, with the two branches flowing around the city like a moat. A bridge near the city's North Gate crosses the river a short distance west of the graveyard, so mourners can walk to the cemetery easily. The cemetery itself is quite beautiful. Valhingen Graveyard looks more like a park than a cemetery and stands in stark contrast to the ramshackle, half-built Phlan. Gravel walkways wend between tall trees, well-tended beds of shrubs and flowers, sturdy mausoleums, and rows of headstones, monuments, and commemorative statues. You need only a few moments to spot a man and a woman dressed in simple, home-spun gray robes trimming shrubs and pulling weeds from between gravestones.",
+        "summary": "Dues for the Dead is a thrilling adventure where your party is hired by priests of Kelemvor to investigate mysterious disappearances and undead activity in the ancient catacombs beneath Valhingen Graveyard in Phlan. Accompanied by a young priestess who frowns upon tomb looting, you'll delve deep into sprawling underground passages to uncover a Red Wizard necromancer's sinister plot involving the long-forgotten Pool of Radiance-a perfect blend of classic dungeon crawling, combat challenges, and moral dilemmas that will test both your blade and your conscience"
+      }
+    ]
+  }
+  
