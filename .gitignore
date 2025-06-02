@@ -46,3 +46,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/ui/api/__pycache__/
+/ui/.next/
+/ui/node_modules
