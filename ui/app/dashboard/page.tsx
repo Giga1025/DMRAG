@@ -114,7 +114,10 @@ export default function DashboardPage() {
             <p className="text-black mb-4">
               Continue your ongoing adventures
             </p>
-            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition duration-200">
+            <button 
+              onClick={() => router.push('/chat')}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition duration-200"
+            >
               View Campaigns
             </button>
           </div>
@@ -124,7 +127,10 @@ export default function DashboardPage() {
             <p className="text-black mb-4">
               Start a fresh quest with your AI DM
             </p>
-            <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md transition duration-200">
+            <button 
+              onClick={() => router.push('/chat')}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md transition duration-200"
+            >
               Begin Adventure
             </button>
           </div>

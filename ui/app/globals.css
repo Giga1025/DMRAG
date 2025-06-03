@@ -311,4 +311,83 @@ body {
   .inputArea {
     padding: 1rem;
   }
+}
+
+/* Dashboard Chat Button */
+.dashboard-actions {
+  margin: 2rem 0;
+}
+
+.chat-button {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border: none;
+  border-radius: 1rem;
+  color: white;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
+  cursor: pointer;
+  max-width: 400px;
+}
+
+.chat-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(124, 58, 237, 0.4);
+  text-decoration: none;
+  color: white;
+}
+
+.chat-icon {
+  font-size: 2rem;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3rem;
+  height: 3rem;
+}
+
+.chat-button-content h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.chat-button-content p {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+.chat-button .arrow {
+  font-size: 1.5rem;
+  margin-left: auto;
+  transition: transform 0.3s ease;
+}
+
+.chat-button:hover .arrow {
+  transform: translateX(4px);
+}
+
+@media (max-width: 768px) {
+  .chat-button {
+    padding: 1rem 1.5rem;
+    max-width: 100%;
+  }
+  
+  .chat-icon {
+    font-size: 1.5rem;
+    min-width: 2.5rem;
+    height: 2.5rem;
+  }
+  
+  .chat-button-content h3 {
+    font-size: 1.125rem;
+  }
 } 
