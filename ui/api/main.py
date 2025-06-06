@@ -32,7 +32,7 @@ setup_middleware(app)
 supabase: Client = get_supabase_client()
 
 # Character endpoints
-@api_router.get("/characters")
+@api_router.get("/get_user_characters")
 async def get_user_characters(user: str = Depends(get_current_user)):
     """Get all characters for the current user"""
     user_id = user.id
@@ -53,13 +53,13 @@ async def get_user_characters(user: str = Depends(get_current_user)):
             "data": None
         }
 
-@api_router.get("/characters/{character_id}", response_model=Character)
+@api_router.get("/get_character/{character_id}", response_model=Character)
 async def get_character(character_id: str, user: str = Depends(get_current_user)):
     # TODO: Implement database query to get specific character
     user_id = user.id
     raise HTTPException(status_code=404, detail="Character not found")
 
-@api_router.post("/characters")
+@api_router.post("/create_character")
 async def create_character(character: CharacterCreate, user: str = Depends(get_current_user)):
     """Create a new character"""
     user_id = user.id
@@ -83,7 +83,7 @@ async def create_character(character: CharacterCreate, user: str = Depends(get_c
             "data": None
         }
 
-@api_router.put("/characters/{character_id}", response_model=Character)
+@api_router.put("/update_character/{character_id}", response_model=Character)
 async def update_character(
     character_id: str, 
     updates: Dict[str, Any], 
@@ -93,27 +93,27 @@ async def update_character(
     # TODO: Implement character update in database
     raise HTTPException(status_code=404, detail="Character not found")
 
-@api_router.delete("/characters/{character_id}")
+@api_router.delete("/delete_character/{character_id}")
 async def delete_character(character_id: str, user: str = Depends(get_current_user)):
     # TODO: Implement character deletion from database
     user_id = user.id
     return {"success": True}
 
 # Campaign endpoints
-@api_router.get("/campaigns")
+@api_router.get("/get_user_campaigns")
 async def get_user_campaigns(user: str = Depends(get_current_user)):
     # TODO: Implement campaign fetching
     user_id = user.id
     return []
 
-@api_router.post("/campaigns")
+@api_router.post("/create_campaign")
 async def create_campaign(campaign_data: Dict[str, Any], user: str = Depends(get_current_user)):
     # TODO: Implement campaign creation
     user_id = user.id
     return {"id": str(uuid.uuid4()), "message": "Campaign created"}
 
 # Adventure endpoints
-@api_router.post("/adventures/start")
+@api_router.post("/start_adventure")
 async def start_adventure(
     request: Dict[str, Any], 
     user: str = Depends(get_current_user)
@@ -134,13 +134,13 @@ async def start_adventure(
         ]
     }
 
-@api_router.get("/adventures/{adventure_id}")
+@api_router.get("/get_adventure/{adventure_id}")
 async def get_adventure(adventure_id: str, user: str = Depends(get_current_user)):
     # TODO: Implement adventure state retrieval
     user_id = user.id
     return {"adventure_id": adventure_id, "status": "active"}
 
-@api_router.post("/adventures/{adventure_id}/action")
+@api_router.post("/send_action/{adventure_id}")
 async def send_action(
     adventure_id: str, 
     action_request: ActionRequest,
@@ -158,14 +158,14 @@ async def send_action(
         ]
     }
 
-@api_router.get("/adventures/{adventure_id}/history")
+@api_router.get("/get_adventure_history/{adventure_id}")
 async def get_adventure_history(adventure_id: str, user: str = Depends(get_current_user)):
     # TODO: Implement adventure history retrieval
     user_id = user.id
     return []
 
 # Utility endpoints
-@api_router.post("/dice/roll")
+@api_router.post("/roll_dice")
 async def roll_dice(dice_request: DiceRollRequest):
     # TODO: Implement dice rolling logic
     import random
@@ -173,12 +173,12 @@ async def roll_dice(dice_request: DiceRollRequest):
     result = random.randint(1, 20)
     return {"dice": dice_request.dice, "result": result}
 
-@api_router.get("/spells/{spell_name}")
+@api_router.get("/get_spell/{spell_name}")
 async def get_spell(spell_name: str):
     # TODO: Implement spell lookup
     return {"name": spell_name, "description": "Spell information..."}
 
-@api_router.post("/chunks/load")
+@api_router.post("/load_chunks")
 async def load_chunks(request: LoadChunksRequest, auth_data = Depends(get_user_and_token)):
     """Load chunks from a file in Supabase Storage"""
     try:
