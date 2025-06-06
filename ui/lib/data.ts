@@ -1,52 +1,11 @@
+import type { ApiResponse, Character } from './types'
+import { createClient } from '@/lib/supabase'
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-
-interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-  message?: string
-}
-
-interface CharacterStats {
-  strength: number
-  dexterity: number
-  constitution: number
-  intelligence: number
-  wisdom: number
-  charisma: number
-}
-
-interface CharacterBackground {
-  id: string
-  name: string
-  description: string
-}
-
-interface CharacterBackstory {
-  text: string
-  created_at: string
-}
-
-export interface Character {
-  id: string
-  name: string
-  race: string
-  characterClass: string
-  level: number
-  hitPoints: number
-  armorClass: number
-  proficiencyBonus: number
-  stats: CharacterStats
-  background: CharacterBackground
-  backstory: CharacterBackstory
-  owner_id?: string
-  created_at: string
-}
 
 // Helper function to get auth token
 const getAuthToken = async () => {
   // You'll need to get this from your Supabase session
-  const { createClient } = await import('@/lib/supabase')
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   return session?.access_token

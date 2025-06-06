@@ -1,96 +1,35 @@
-from fastapi import FastAPI, HTTPException, Depends, status, APIRouter, Header
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Depends, status, APIRouter
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime
-import jwt
-import os
-from supabase import create_client, Client
-from dotenv import load_dotenv
 import uuid as uuid_module
 import json
 import io
+from supabase import Client
+import uvicorn
 
-load_dotenv()  # Add this at the top
+from api.middleware import (
+    setup_middleware,
+    get_current_user, 
+    get_user_and_token,
+    get_supabase_client
+)
+from api.schemas import (
+    Character,
+    CharacterCreate,
+    ActionRequest,
+    DiceRollRequest,
+    LoadChunksRequest
+)
 
 app = FastAPI(title="AI DM API", version="1.0.0")
 api_router = APIRouter()
 
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Add your frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Setup all middleware
+setup_middleware(app)
 
-# Supabase configuration
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")  # This is your JWT secret from Supabase
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# Pydantic models
-class CharacterStats(BaseModel):
-    strength: int
-    dexterity: int
-    constitution: int
-    intelligence: int
-    wisdom: int
-    charisma: int
-
-class CharacterBackground(BaseModel):
-    id: str
-    name: str
-    description: str
-
-class CharacterBackstory(BaseModel):
-    text: str
-    created_at: str
-
-class CharacterCreate(BaseModel):
-    name: str
-    race: str
-    characterClass: str
-    level: int
-    hitPoints: int
-    armorClass: int
-    proficiencyBonus: int
-    stats: CharacterStats
-    background: CharacterBackground
-    backstory: CharacterBackstory
-
-class Character(CharacterCreate):
-    id: str
-    owner_id: str
-    created_at: str
-
-class ActionRequest(BaseModel):
-    action: str
-    choice: Optional[str] = None
-
-class DiceRollRequest(BaseModel):
-    dice: str
-
-class LoadChunksRequest(BaseModel):
-    source_filter: Optional[str] = None
-
-# Auth dependency
-async def get_current_user(authorization: Optional[str] = Header(None)):
-    token = authorization.split("Bearer ")[1]
-    response = supabase.auth.get_user(token)
-    supabase.postgrest.auth(token)
-    user = response.user
-    return user
-
-# Helper function to get both user and token
-async def get_user_and_token(authorization: Optional[str] = Header(None)):
-    token = authorization.split("Bearer ")[1]
-    response = supabase.auth.get_user(token)
-    user = response.user
-    return user, token
+# Get supabase client from middleware
+supabase: Client = get_supabase_client()
 
 # Character endpoints
 @api_router.get("/characters")
@@ -309,5 +248,4 @@ def load_all_chunks(bucket_name: str, file_name: str, supabase_client: Client, s
 app.include_router(api_router)
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000) 
