@@ -9,6 +9,8 @@ import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import uuid as uuid_module
+import json
+import io
 
 load_dotenv()  # Add this at the top
 
@@ -72,6 +74,9 @@ class ActionRequest(BaseModel):
 class DiceRollRequest(BaseModel):
     dice: str
 
+class LoadChunksRequest(BaseModel):
+    source_filter: Optional[str] = None
+
 # Auth dependency
 async def get_current_user(authorization: Optional[str] = Header(None)):
     token = authorization.split("Bearer ")[1]
@@ -79,6 +84,13 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
     supabase.postgrest.auth(token)
     user = response.user
     return user
+
+# Helper function to get both user and token
+async def get_user_and_token(authorization: Optional[str] = Header(None)):
+    token = authorization.split("Bearer ")[1]
+    response = supabase.auth.get_user(token)
+    user = response.user
+    return user, token
 
 # Character endpoints
 @api_router.get("/characters")
@@ -226,6 +238,73 @@ async def roll_dice(dice_request: DiceRollRequest):
 async def get_spell(spell_name: str):
     # TODO: Implement spell lookup
     return {"name": spell_name, "description": "Spell information..."}
+
+@api_router.post("/chunks/load")
+async def load_chunks(request: LoadChunksRequest, auth_data = Depends(get_user_and_token)):
+    """Load chunks from a file in Supabase Storage"""
+    try:
+        user, token = auth_data
+        
+        # Hardcoded bucket and file name
+        chunks = load_all_chunks(
+            bucket_name="jsonl-files",
+            file_name="first_200.jsonl",
+            supabase_client=supabase,
+            source_filter=request.source_filter,
+            user_token=token
+        )
+        
+        return {
+            "success": True,
+            "data": chunks,
+            "count": len(chunks),
+            "message": f"Successfully loaded {len(chunks)} chunks from jsonl-files/first_200.jsonl"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "data": None,
+            "count": 0
+        }
+
+def load_all_chunks(bucket_name: str, file_name: str, supabase_client: Client, source_filter: str = None, user_token: str = None):
+    all_chunks = []
+    
+    # Set the auth token for storage access if provided
+    if user_token:
+        # Set auth headers for storage client
+        supabase_client.storage._client.headers.update({
+            "Authorization": f"Bearer {user_token}"
+        })
+    
+    # Download the file from Supabase Storage
+    response = supabase_client.storage.from_(bucket_name).download(file_name)
+    
+    # Convert bytes to string and create a file-like object
+    file_content = response.decode('utf-8')
+    file_lines = io.StringIO(file_content)
+    
+    # Process each line just like before
+    for line in file_lines:
+        line = line.strip()
+        if not line:  # Skip empty lines
+            continue
+            
+        chunk = json.loads(line)
+
+        # We always include the rule book chunks
+        if chunk.get("genre") == "core_rules" and chunk.get("source_doc") == "rule_book":
+            all_chunks.append(chunk)
+            continue
+
+        # We filter out the chunks that are not from the campaign that the user selected
+        if source_filter and chunk.get("source_doc") != source_filter:
+            continue
+
+        all_chunks.append(chunk)
+    
+    return all_chunks
 
 app.include_router(api_router)
 

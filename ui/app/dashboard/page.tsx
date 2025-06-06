@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { charactersApi, type Character } from '@/lib/data'
+import { charactersApi, chunksApi, type Character } from '@/lib/data'
 import type { User } from '@supabase/supabase-js'
 
 export default function DashboardPage() {
@@ -12,6 +12,9 @@ export default function DashboardPage() {
   const [characters, setCharacters] = useState<Character[]>([])
   const [charactersLoading, setCharactersLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [chunksLoading, setChunksLoading] = useState(false)
+  const [chunksResult, setChunksResult] = useState<any>(null)
+  const [chunksError, setChunksError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -69,6 +72,24 @@ export default function DashboardPage() {
     return Math.floor((stat - 10) / 2)
   }
 
+  const testChunksAPI = async () => {
+    setChunksLoading(true)
+    setChunksError(null)
+    setChunksResult(null)
+    try {
+      const chunks = await chunksApi.loadChunks()
+      setChunksResult({
+        count: chunks.length,
+        sample: chunks.slice(0, 3) // Show first 3 chunks as sample
+      })
+    } catch (err) {
+      setChunksError(err instanceof Error ? err.message : 'Failed to load chunks')
+      console.error('Error testing chunks API:', err)
+    } finally {
+      setChunksLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
@@ -95,7 +116,7 @@ export default function DashboardPage() {
       </nav>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 text-black">
             <h2 className="text-xl font-semibold mb-4">🎭 Create Character</h2>
             <p className="text-black mb-4">
@@ -127,6 +148,32 @@ export default function DashboardPage() {
             <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md transition duration-200">
               Begin Adventure
             </button>
+          </div>
+
+          <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 text-black">
+            <h2 className="text-xl font-semibold mb-4">🧪 Test Chunks API</h2>
+            <p className="text-black mb-4">
+              Test the new chunks loading API endpoint
+            </p>
+            <button 
+              onClick={testChunksAPI}
+              disabled={chunksLoading}
+              className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-500 text-white px-4 py-2 rounded-md transition duration-200"
+            >
+              {chunksLoading ? '🔄 Testing...' : '🧪 Test API'}
+            </button>
+            
+            {chunksResult && (
+              <div className="mt-4 p-3 bg-green-100 rounded text-green-800 text-sm">
+                ✅ Success! Loaded {chunksResult.count} chunks
+              </div>
+            )}
+            
+            {chunksError && (
+              <div className="mt-4 p-3 bg-red-100 rounded text-red-800 text-sm">
+                ❌ {chunksError}
+              </div>
+            )}
           </div>
         </div>
 

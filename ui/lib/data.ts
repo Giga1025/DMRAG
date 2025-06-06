@@ -235,4 +235,21 @@ export const dndApi = {
     }
     throw new Error(response.error || 'Failed to fetch spell')
   }
+}
+
+// Chunks API for loading game data
+export const chunksApi = {
+  // Load chunks from Supabase Storage (hardcoded to jsonl-files/first_200.jsonl)
+  async loadChunks(sourceFilter?: string): Promise<any[]> {
+    const response = await apiCall<any[]>('/chunks/load', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        source_filter: sourceFilter 
+      }),
+    })
+    if (response.success && response.data) {
+      return response.data
+    }
+    throw new Error(response.error || 'Failed to load chunks')
+  }
 } 
