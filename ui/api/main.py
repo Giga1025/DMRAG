@@ -53,11 +53,32 @@ async def get_user_characters(user: str = Depends(get_current_user)):
             "data": None
         }
 
-@api_router.get("/get_character/{character_id}", response_model=Character)
+@api_router.get("/get_character/{character_id}")
 async def get_character(character_id: str, user: str = Depends(get_current_user)):
-    # TODO: Implement database query to get specific character
+    """Get a specific character by ID for the current user"""
     user_id = user.id
-    raise HTTPException(status_code=404, detail="Character not found")
+    try:
+        print(f"Getting character {character_id} for user: {user_id}")
+        
+        # Query for the character by ID and ensure it belongs to the current user
+        response = supabase.table('Characters').select('*').eq('id', character_id).eq('owner_id', user_id).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Character not found or you don't have permission to access it")
+        
+        character_data = response.data[0]
+        return {
+            "success": True,
+            "data": character_data,
+            "message": "Character retrieved successfully"
+        }
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404)
+        raise
+    except Exception as e:
+        print(f"Error getting character: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @api_router.post("/create_character")
 async def create_character(character: CharacterCreate, user: str = Depends(get_current_user)):
@@ -83,21 +104,79 @@ async def create_character(character: CharacterCreate, user: str = Depends(get_c
             "data": None
         }
 
-@api_router.put("/update_character/{character_id}", response_model=Character)
+@api_router.put("/update_character/{character_id}")
 async def update_character(
     character_id: str, 
     updates: Dict[str, Any], 
     user: str = Depends(get_current_user)
 ):
+    """Update a specific character for the current user"""
     user_id = user.id
-    # TODO: Implement character update in database
-    raise HTTPException(status_code=404, detail="Character not found")
+    try:
+        print(f"Updating character {character_id} for user: {user_id}")
+        
+        # First verify the character exists and belongs to the current user
+        existing_response = supabase.table('Characters').select('*').eq('id', character_id).eq('owner_id', user_id).execute()
+        
+        if not existing_response.data:
+            raise HTTPException(status_code=404, detail="Character not found or you don't have permission to update it")
+        
+        # Remove any fields that shouldn't be updated (like id, owner_id, created_at)
+        safe_updates = {k: v for k, v in updates.items() if k not in ['id', 'owner_id', 'created_at']}
+        
+        if not safe_updates:
+            raise HTTPException(status_code=400, detail="No valid fields to update")
+        
+        # Update the character
+        update_response = supabase.table('Characters').update(safe_updates).eq('id', character_id).eq('owner_id', user_id).execute()
+        
+        if not update_response.data:
+            raise HTTPException(status_code=500, detail="Failed to update character")
+        
+        updated_character = update_response.data[0]
+        return {
+            "success": True,
+            "data": updated_character,
+            "message": "Character updated successfully"
+        }
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        print(f"Error updating character: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @api_router.delete("/delete_character/{character_id}")
 async def delete_character(character_id: str, user: str = Depends(get_current_user)):
-    # TODO: Implement character deletion from database
+    """Delete a specific character for the current user"""
     user_id = user.id
-    return {"success": True}
+    try:
+        print(f"Deleting character {character_id} for user: {user_id}")
+        
+        # First verify the character exists and belongs to the current user
+        existing_response = supabase.table('Characters').select('*').eq('id', character_id).eq('owner_id', user_id).execute()
+        
+        if not existing_response.data:
+            raise HTTPException(status_code=404, detail="Character not found or you don't have permission to delete it")
+        
+        character_name = existing_response.data[0].get('name', 'Unknown')
+        
+        # Delete the character
+        delete_response = supabase.table('Characters').delete().eq('id', character_id).eq('owner_id', user_id).execute()
+        
+        return {
+            "success": True,
+            "message": f"Character '{character_name}' deleted successfully",
+            "deleted_character_id": character_id
+        }
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        print(f"Error deleting character: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 # Campaign endpoints
 @api_router.get("/get_user_campaigns")
