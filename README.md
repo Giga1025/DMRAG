@@ -10,13 +10,13 @@ Dungeons and dragons is a popular table top board game, which is packed with ric
 
 ## Code
 General description:
-pipeline.py - the main file for our project. It retrieves relevant chunks from our chunked corpus, the finetuned model, the game state function, and generates model response.
-chunking_and_removing_duplicates.py - this file is used to chunk the text and remove duplicates. It uses the BART model to generate chunks of text.
-embedding_n_llm_fine_tuning.py - this file is used to fine-tune the BAAI bge (our embedding model) and GPT-2 (our LLM model) on our chunked corpus. 
-initial_xml-jsonl.py - this file is used to parse the XML files (generated from the SRD doc and the pre-made campaigns) and convert it to JSONL format.
-game_state_manager.py - this file is used to manage the game state. It defines the Player class and the functions to manage the game state. It also defines the tools that are used for function calling.
-campaign_details.json - this file contains the details of the campaigns that we have. It is used to load the campaigns and their details.
-jsonl_files/ - this folder contains the JSONL files that are generated from the XML files. It contains the chunked corpus and the merged corpus.
+* pipeline.py - the main file for our project. It retrieves relevant chunks from our chunked corpus, the finetuned model, the game state function, and generates model response.
+* chunking_and_removing_duplicates.py - this file is used to chunk the text and remove duplicates. It uses the BART model to generate chunks of text.
+* embedding_n_llm_fine_tuning.py - this file is used to fine-tune the BAAI bge (our embedding model) and GPT-2 (our LLM model) on our chunked corpus. 
+* initial_xml-jsonl.py - this file is used to parse the XML files (generated from the SRD doc and the pre-made campaigns) and convert it to JSONL format.
+* game_state_manager.py - this file is used to manage the game state. It defines the Player class and the functions to manage the game state. It also defines the tools that are used for function calling.
+* campaign_details.json - this file contains the details of the campaigns that we have. It is used to load the campaigns and their details.
+* jsonl_files/ - this folder contains the JSONL files that are generated from the XML files. It contains the chunked corpus and the merged corpus.
 
 ## Data
 
