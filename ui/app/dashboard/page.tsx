@@ -271,24 +271,6 @@ export default function DashboardPage() {
     return Math.floor((stat - 10) / 2)
   }
 
-  const testChunksAPI = async () => {
-    setChunksLoading(true)
-    setChunksError(null)
-    setChunksResult(null)
-    try {
-      const chunks = await chunksApi.loadChunks()
-      setChunksResult({
-        count: chunks.length,
-        sample: chunks.slice(0, 3) // Show first 3 chunks as sample
-      })
-    } catch (err) {
-      setChunksError(err instanceof Error ? err.message : 'Failed to load chunks')
-      console.error('Error testing chunks API:', err)
-    } finally {
-      setChunksLoading(false)
-    }
-  }
-
   const handleEditCharacter = (character: Character) => {
     setSelectedCharacter(character)
     setEditModalOpen(true)
@@ -353,7 +335,7 @@ export default function DashboardPage() {
       </nav>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6 text-black border border-white border-opacity-20 hover:border-opacity-30 transition-all duration-200 shadow-xl">
             <h2 className="text-xl font-semibold mb-4">🎭 Create Character</h2>
             <p className="text-black mb-4">
@@ -387,31 +369,6 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6 text-black border border-white border-opacity-20 hover:border-opacity-30 transition-all duration-200 shadow-xl">
-            <h2 className="text-xl font-semibold mb-4">🧪 Test Chunks API</h2>
-            <p className="text-black mb-4">
-              Test the new chunks loading API endpoint
-            </p>
-            <button 
-              onClick={testChunksAPI}
-              disabled={chunksLoading}
-              className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-500 text-white px-4 py-2 rounded-lg transition duration-200 shadow-lg"
-            >
-              {chunksLoading ? '🔄 Testing...' : '🧪 Test API'}
-            </button>
-            
-            {chunksResult && (
-              <div className="mt-4 p-3 bg-green-500 bg-opacity-20 border border-green-500 border-opacity-30 rounded-lg text-black text-sm">
-                ✅ Success! Loaded {chunksResult.count} chunks
-              </div>
-            )}
-            
-            {chunksError && (
-              <div className="mt-4 p-3 bg-red-500 bg-opacity-20 border border-red-500 border-opacity-30 rounded-lg text-black text-sm">
-                ❌ {chunksError}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Characters Section */}

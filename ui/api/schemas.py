@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 class CharacterStats(BaseModel):
     strength: int
@@ -29,6 +29,10 @@ class CharacterCreate(BaseModel):
     stats: CharacterStats
     background: CharacterBackground
     backstory: CharacterBackstory
+    weapon: Optional[str] = None
+    items: Optional[List[str]] = None
+    mana: Optional[int] = None
+    status: Optional[str] = None
 
 class Character(CharacterCreate):
     id: str
@@ -43,4 +47,13 @@ class DiceRollRequest(BaseModel):
     dice: str
 
 class LoadChunksRequest(BaseModel):
-    source_filter: Optional[str] = None 
+    source_filter: Optional[str] = None
+
+class InitializeRetrieverRequest(BaseModel):
+    chunks: List[Dict[str, Any]]
+    embedding_model_path: Optional[str] = None
+
+class SearchRequest(BaseModel):
+    query: str
+    top_k: Optional[int] = 5
+    alpha: Optional[float] = 0.2 

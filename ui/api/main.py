@@ -19,8 +19,12 @@ from api.schemas import (
     CharacterCreate,
     ActionRequest,
     DiceRollRequest,
-    LoadChunksRequest
+    LoadChunksRequest,
+    InitializeRetrieverRequest,
+    SearchRequest
 )
+from api.game_state_service import GameStateService
+from api.retriever_service import RetrieverService
 
 app = FastAPI(title="AI DM API", version="1.0.0")
 api_router = APIRouter()
@@ -31,78 +35,36 @@ setup_middleware(app)
 # Get supabase client from middleware
 supabase: Client = get_supabase_client()
 
+# Initialize services
+game_service = GameStateService(supabase)
+retriever_service = RetrieverService()
+
 # Character endpoints
 @api_router.get("/get_user_characters")
 async def get_user_characters(user: str = Depends(get_current_user)):
     """Get all characters for the current user"""
     user_id = user.id
-    try:
-        print(f"Getting characters for user: {user_id}")
-        print(f"Type of user_id: {type(user_id)}")
-        response = supabase.table('Characters').select('*').eq('owner_id', user_id).execute()
-        
-        return {
-            "success": True,
-            "data": response.data,
-            "message": f"Found {len(response.data)} characters"
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "data": None
-        }
+    return game_service.get_user_characters(user_id)
 
 @api_router.get("/get_character/{character_id}")
 async def get_character(character_id: str, user: str = Depends(get_current_user)):
     """Get a specific character by ID for the current user"""
     user_id = user.id
-    try:
-        print(f"Getting character {character_id} for user: {user_id}")
-        
-        # Query for the character by ID and ensure it belongs to the current user
-        response = supabase.table('Characters').select('*').eq('id', character_id).eq('owner_id', user_id).execute()
-        
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Character not found or you don't have permission to access it")
-        
-        character_data = response.data[0]
-        return {
-            "success": True,
-            "data": character_data,
-            "message": "Character retrieved successfully"
-        }
-        
-    except HTTPException:
-        # Re-raise HTTP exceptions (like 404)
-        raise
-    except Exception as e:
-        print(f"Error getting character: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+    result = game_service.get_character(character_id, user_id)
+    
+    if not result["success"]:
+        if "not found" in result["error"].lower():
+            raise HTTPException(status_code=404, detail=result["error"])
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    
+    return result
 
 @api_router.post("/create_character")
 async def create_character(character: CharacterCreate, user: str = Depends(get_current_user)):
     """Create a new character"""
     user_id = user.id
-    try:
-        character_data = {
-            "owner_id": user_id,
-            **character.dict()
-        }
-        
-        response = supabase.table('Characters').insert(character_data).execute()
-        
-        return {
-            "success": True,
-            "data": response.data[0] if response.data else None,
-            "message": "Character created successfully"
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "data": None
-        }
+    return game_service.create_character(character.dict(), user_id)
 
 @api_router.put("/update_character/{character_id}")
 async def update_character(
@@ -112,71 +74,31 @@ async def update_character(
 ):
     """Update a specific character for the current user"""
     user_id = user.id
-    try:
-        print(f"Updating character {character_id} for user: {user_id}")
-        
-        # First verify the character exists and belongs to the current user
-        existing_response = supabase.table('Characters').select('*').eq('id', character_id).eq('owner_id', user_id).execute()
-        
-        if not existing_response.data:
-            raise HTTPException(status_code=404, detail="Character not found or you don't have permission to update it")
-        
-        # Remove any fields that shouldn't be updated (like id, owner_id, created_at)
-        safe_updates = {k: v for k, v in updates.items() if k not in ['id', 'owner_id', 'created_at']}
-        
-        if not safe_updates:
-            raise HTTPException(status_code=400, detail="No valid fields to update")
-        
-        # Update the character
-        update_response = supabase.table('Characters').update(safe_updates).eq('id', character_id).eq('owner_id', user_id).execute()
-        
-        if not update_response.data:
-            raise HTTPException(status_code=500, detail="Failed to update character")
-        
-        updated_character = update_response.data[0]
-        return {
-            "success": True,
-            "data": updated_character,
-            "message": "Character updated successfully"
-        }
-        
-    except HTTPException:
-        # Re-raise HTTP exceptions
-        raise
-    except Exception as e:
-        print(f"Error updating character: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+    result = game_service.update_character(character_id, updates, user_id)
+    
+    if not result["success"]:
+        if "not found" in result["error"].lower():
+            raise HTTPException(status_code=404, detail=result["error"])
+        elif "no valid fields" in result["error"].lower():
+            raise HTTPException(status_code=400, detail=result["error"])
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    
+    return result
 
 @api_router.delete("/delete_character/{character_id}")
 async def delete_character(character_id: str, user: str = Depends(get_current_user)):
     """Delete a specific character for the current user"""
     user_id = user.id
-    try:
-        print(f"Deleting character {character_id} for user: {user_id}")
-        
-        # First verify the character exists and belongs to the current user
-        existing_response = supabase.table('Characters').select('*').eq('id', character_id).eq('owner_id', user_id).execute()
-        
-        if not existing_response.data:
-            raise HTTPException(status_code=404, detail="Character not found or you don't have permission to delete it")
-        
-        character_name = existing_response.data[0].get('name', 'Unknown')
-        
-        # Delete the character
-        delete_response = supabase.table('Characters').delete().eq('id', character_id).eq('owner_id', user_id).execute()
-        
-        return {
-            "success": True,
-            "message": f"Character '{character_name}' deleted successfully",
-            "deleted_character_id": character_id
-        }
-        
-    except HTTPException:
-        # Re-raise HTTP exceptions
-        raise
-    except Exception as e:
-        print(f"Error deleting character: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+    result = game_service.delete_character(character_id, user_id)
+    
+    if not result["success"]:
+        if "not found" in result["error"].lower():
+            raise HTTPException(status_code=404, detail=result["error"])
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    
+    return result
 
 # Campaign endpoints
 @api_router.get("/get_user_campaigns")
@@ -242,6 +164,85 @@ async def get_adventure_history(adventure_id: str, user: str = Depends(get_curre
     # TODO: Implement adventure history retrieval
     user_id = user.id
     return []
+
+# Retriever endpoints
+@api_router.post("/initialize_retriever")
+async def initialize_retriever(
+    request: InitializeRetrieverRequest,
+    user: str = Depends(get_current_user)
+):
+    """Initialize the hybrid retriever with chunks"""
+    result = retriever_service.initialize_retriever(
+        request.chunks, 
+        request.embedding_model_path
+    )
+    
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=result["error"])
+    
+    return result
+
+@api_router.post("/search")
+async def search(
+    request: SearchRequest,
+    user: str = Depends(get_current_user)
+):
+    """Perform hybrid search using the initialized retriever"""
+    result = retriever_service.search(
+        request.query, 
+        request.top_k, 
+        request.alpha
+    )
+    
+    if not result["success"]:
+        if "not initialized" in result["error"].lower():
+            raise HTTPException(status_code=400, detail=result["error"])
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    
+    return result
+
+@api_router.get("/retriever_status")
+async def get_retriever_status(user: str = Depends(get_current_user)):
+    """Get the current status of the retriever"""
+    return retriever_service.get_status()
+
+@api_router.post("/load_and_initialize_retriever")
+async def load_and_initialize_retriever(
+    request: LoadChunksRequest, 
+    auth_data = Depends(get_user_and_token)
+):
+    """Load chunks and initialize retriever in one step"""
+    try:
+        user, token = auth_data
+        
+        # Load chunks from Supabase Storage
+        chunks = load_all_chunks(
+            bucket_name="jsonl-files",
+            file_name="first_200.jsonl",
+            supabase_client=supabase,
+            source_filter=request.source_filter,
+            user_token=token
+        )
+        
+        # Initialize retriever with loaded chunks
+        retriever_result = retriever_service.initialize_retriever(chunks)
+        
+        if not retriever_result["success"]:
+            raise HTTPException(status_code=500, detail=retriever_result["error"])
+        
+        return {
+            "success": True,
+            "message": f"Successfully loaded {len(chunks)} chunks and initialized retriever",
+            "chunk_count": len(chunks),
+            "retriever_status": retriever_service.get_status()
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "chunk_count": 0
+        }
 
 # Utility endpoints
 @api_router.post("/roll_dice")
@@ -328,3 +329,7 @@ app.include_router(api_router)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 
+
+
+
+# TODO: Model response generation w gpt2
