@@ -335,7 +335,7 @@ export default function DashboardPage() {
       </nav>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6 text-black border border-white border-opacity-20 hover:border-opacity-30 transition-all duration-200 shadow-xl">
             <h2 className="text-xl font-semibold mb-4">🎭 Create Character</h2>
             <p className="text-black mb-4">
@@ -350,22 +350,15 @@ export default function DashboardPage() {
           </div>
 
           <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6 text-black border border-white border-opacity-20 hover:border-opacity-30 transition-all duration-200 shadow-xl">
-            <h2 className="text-xl font-semibold mb-4">⚔️ Active Campaigns</h2>
+            <h2 className="text-xl font-semibold mb-4">💬 Chat with AI DM</h2>
             <p className="text-black mb-4">
-              Continue your ongoing adventures
+              Head over to the chat to talk with your Dungeon Master
             </p>
-            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition duration-200 shadow-lg">
-              View Campaigns
-            </button>
-          </div>
-
-          <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6 text-black border border-white border-opacity-20 hover:border-opacity-30 transition-all duration-200 shadow-xl">
-            <h2 className="text-xl font-semibold mb-4">🗺️ New Adventure</h2>
-            <p className="text-black mb-4">
-              Start a fresh quest with your AI DM
-            </p>
-            <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition duration-200 shadow-lg">
-              Begin Adventure
+            <button 
+              onClick={() => router.push('/chat')}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition duration-200 shadow-lg"
+            >
+              Open Chat
             </button>
           </div>
 

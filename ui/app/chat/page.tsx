@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react';
+import { modelApi } from '@/lib/data';
 
 interface Message {
   id: string;
@@ -44,27 +45,30 @@ export default function ChatPage() {
     setInputMessage('');
     setIsLoading(true);
 
-    // Simulate AI response (replace with actual AI call later)
-    setTimeout(() => {
-      const dmResponses = [
-        "The shadows seem to whisper your name as you step forward. Roll for perception!",
-        "A goblin jumps out from behind a rock! What's your next move?",
-        "You discover a glimmering treasure chest. It could be trapped... do you investigate?",
-        "The ancient door creaks open, revealing a chamber filled with mysterious fog.",
-        "A wise old wizard appears before you, offering a cryptic riddle.",
-        "Your torch flickers as a cold wind blows through the corridor ahead."
-      ];
+    try {
+      // Send only the latest user input
+      const apiResponse = await modelApi.generateResponse(inputMessage);
 
       const dmMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'dm',
-        content: dmResponses[Math.floor(Math.random() * dmResponses.length)],
+        content: apiResponse.response,
         timestamp: new Date()
       };
 
       setMessages(prev => [...prev, dmMessage]);
+    } catch (error) {
+      console.error('Failed to generate response', error);
+      const dmMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'dm',
+        content: 'The Dungeon Master is momentarily speechless. Please try again.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, dmMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

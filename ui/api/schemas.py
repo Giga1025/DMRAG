@@ -56,4 +56,7 @@ class InitializeRetrieverRequest(BaseModel):
 class SearchRequest(BaseModel):
     query: str
     top_k: Optional[int] = 5
-    alpha: Optional[float] = 0.2 
+    alpha: Optional[float] = 0.2
+
+class ModelResponseRequest(BaseModel):
+    user_input: str 

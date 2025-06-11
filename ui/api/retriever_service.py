@@ -2,6 +2,7 @@ import os
 import json
 import re
 from typing import List, Dict, Any
+from pathlib import Path
 
 import numpy as np
 import faiss
@@ -9,6 +10,8 @@ from rank_bm25 import BM25Okapi
 from sklearn.preprocessing import normalize
 from sentence_transformers import SentenceTransformer
 
+# Determine project root directory relative to this file
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 class HybridRetriever:
     def __init__(self, chunks: List[Dict[str, Any]], embedding_model_path: str = "dnd_finetuned_bge/dnd_finetuned_bge"):
@@ -90,7 +93,7 @@ class HybridRetriever:
 class RetrieverService:
     def __init__(self):
         self.retriever = None
-        self.embedding_model_path = "../../models/dnd_finetuned_bge/dnd_finetuned_bge"
+        self.embedding_model_path = str(BASE_DIR / "models/dnd_finetuned_bge/dnd_finetuned_bge")
     
     def initialize_retriever(self, chunks: List[Dict[str, Any]], embedding_model_path: str = None) -> Dict[str, Any]:
         """

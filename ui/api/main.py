@@ -7,6 +7,16 @@ import json
 import io
 from supabase import Client
 import uvicorn
+from transformers import pipeline, GPT2Tokenizer, GPT2LMHeadModel
+import torch
+from pathlib import Path
+
+# Determine project root directory relative to this file (ui/api/main.py -> project root is two levels up)
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+# Cache variables to store the loaded model/tokenizer across requests
+_cached_model = None
+_cached_tokenizer = None
 
 from api.middleware import (
     setup_middleware,
@@ -21,7 +31,8 @@ from api.schemas import (
     DiceRollRequest,
     LoadChunksRequest,
     InitializeRetrieverRequest,
-    SearchRequest
+    SearchRequest,
+    ModelResponseRequest
 )
 from api.game_state_service import GameStateService
 from api.retriever_service import RetrieverService
@@ -100,71 +111,6 @@ async def delete_character(character_id: str, user: str = Depends(get_current_us
     
     return result
 
-# Campaign endpoints
-@api_router.get("/get_user_campaigns")
-async def get_user_campaigns(user: str = Depends(get_current_user)):
-    # TODO: Implement campaign fetching
-    user_id = user.id
-    return []
-
-@api_router.post("/create_campaign")
-async def create_campaign(campaign_data: Dict[str, Any], user: str = Depends(get_current_user)):
-    # TODO: Implement campaign creation
-    user_id = user.id
-    return {"id": str(uuid.uuid4()), "message": "Campaign created"}
-
-# Adventure endpoints
-@api_router.post("/start_adventure")
-async def start_adventure(
-    request: Dict[str, Any], 
-    user: str = Depends(get_current_user)
-):
-    user_id = user.id
-    # TODO: Implement adventure start logic with AI
-    character_id = request.get("character_id")
-    settings = request.get("settings", {})
-    
-    return {
-        "adventure_id": str(uuid.uuid4()),
-        "message": "Your adventure begins...",
-        "scene": "You find yourself at the entrance of a mysterious dungeon...",
-        "choices": [
-            "Enter the dungeon carefully",
-            "Call out to see if anyone is inside",
-            "Look for another way around"
-        ]
-    }
-
-@api_router.get("/get_adventure/{adventure_id}")
-async def get_adventure(adventure_id: str, user: str = Depends(get_current_user)):
-    # TODO: Implement adventure state retrieval
-    user_id = user.id
-    return {"adventure_id": adventure_id, "status": "active"}
-
-@api_router.post("/send_action/{adventure_id}")
-async def send_action(
-    adventure_id: str, 
-    action_request: ActionRequest,
-    user: str = Depends(get_current_user)
-):
-    user_id = user.id
-    # TODO: Implement AI response to player action
-    return {
-        "response": f"You chose to {action_request.action}. The adventure continues...",
-        "new_scene": "Based on your choice, something interesting happens...",
-        "choices": [
-            "Continue forward",
-            "Look around",
-            "Rest here"
-        ]
-    }
-
-@api_router.get("/get_adventure_history/{adventure_id}")
-async def get_adventure_history(adventure_id: str, user: str = Depends(get_current_user)):
-    # TODO: Implement adventure history retrieval
-    user_id = user.id
-    return []
-
 # Retriever endpoints
 @api_router.post("/initialize_retriever")
 async def initialize_retriever(
@@ -207,56 +153,72 @@ async def get_retriever_status(user: str = Depends(get_current_user)):
     """Get the current status of the retriever"""
     return retriever_service.get_status()
 
-@api_router.post("/load_and_initialize_retriever")
-async def load_and_initialize_retriever(
-    request: LoadChunksRequest, 
+@api_router.post("/generate_response")
+async def generate_response(
+    request: ModelResponseRequest,
     auth_data = Depends(get_user_and_token)
 ):
-    """Load chunks and initialize retriever in one step"""
+    """Generate a response using the fine-tuned GPT-2 model stored in /models"""
     try:
         user, token = auth_data
         
-        # Load chunks from Supabase Storage
-        chunks = load_all_chunks(
-            bucket_name="jsonl-files",
-            file_name="first_200.jsonl",
-            supabase_client=supabase,
-            source_filter=request.source_filter,
-            user_token=token
-        )
+        # Define the model path relative to project root
+        MODEL_PATH = str(BASE_DIR / "models/gpt2_dnd_finetuned/gpt2_dnd_finetuned")
+
+        # Use simple in-memory cache to avoid reloading the model on every request
+        global _cached_model, _cached_tokenizer
+        if _cached_model is None or _cached_tokenizer is None:
+            _cached_tokenizer = GPT2Tokenizer.from_pretrained(MODEL_PATH)
+            _cached_model = GPT2LMHeadModel.from_pretrained(MODEL_PATH)
+
+            # Ensure padding token exists
+            if _cached_tokenizer.pad_token is None:
+                _cached_tokenizer.pad_token = _cached_tokenizer.eos_token
+
+        # Initialize retriever if not already done
+        retriever_status = retriever_service.get_status()
+        if not retriever_status.get("initialized", False):
+            print("Retriever not initialized, loading chunks and initializing retriever")
+            # Load chunks and initialize retriever
+            chunks = load_all_chunks(
+                bucket_name="jsonl-files",
+                file_name="first_200.jsonl",
+                supabase_client=supabase,
+                source_filter=None,  # No filter for now
+                user_token=token
+            )
+
+            # Initialize retriever with loaded chunks
+            init_result = retriever_service.initialize_retriever(chunks)
+
+            print("Retriever initialization result:")
+            print(init_result)
+
+        # Retrieve relevant context using hybrid search
+        search_result = retriever_service.search(request.user_input, top_k=3, alpha=0.2)
+
+        context = ""
+        if search_result["success"]:
+            # Format the retrieved chunks as context
+            context = "\n\n".join(chunk["text"] for chunk in search_result["results"])
         
-        # Initialize retriever with loaded chunks
-        retriever_result = retriever_service.initialize_retriever(chunks)
-        
-        if not retriever_result["success"]:
-            raise HTTPException(status_code=500, detail=retriever_result["error"])
-        
+        response = general_model_response(request.user_input, _cached_model, _cached_tokenizer, context, user.id)
+
+        if response is None:
+            return {
+                "success": False,
+                "error": "No valid DM response generated",
+                "response": None
+            }
+
         return {
             "success": True,
-            "message": f"Successfully loaded {len(chunks)} chunks and initialized retriever",
-            "chunk_count": len(chunks),
-            "retriever_status": retriever_service.get_status()
+            "data": {
+                "response": response,
+            }
         }
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "chunk_count": 0
-        }
-
-# Utility endpoints
-@api_router.post("/roll_dice")
-async def roll_dice(dice_request: DiceRollRequest):
-    # TODO: Implement dice rolling logic
-    import random
-    # Simple d20 roll for now
-    result = random.randint(1, 20)
-    return {"dice": dice_request.dice, "result": result}
-
-@api_router.get("/get_spell/{spell_name}")
-async def get_spell(spell_name: str):
-    # TODO: Implement spell lookup
-    return {"name": spell_name, "description": "Spell information..."}
+        raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
 
 @api_router.post("/load_chunks")
 async def load_chunks(request: LoadChunksRequest, auth_data = Depends(get_user_and_token)):
@@ -286,6 +248,95 @@ async def load_chunks(request: LoadChunksRequest, auth_data = Depends(get_user_a
             "data": None,
             "count": 0
         }
+
+def general_model_response(user_input: str, model, tokenizer, context: str = "", user_id: str = "") -> Optional[str]:
+    """Generate a response using the specified model and tokenizer"""
+    dm_generator = pipeline(
+        "text-generation",
+        model=model,
+        tokenizer=tokenizer,
+        device=0 if torch.cuda.is_available() else -1,
+    )
+
+    # Get current game state
+    game_state = get_formatted_game_state(user_id) if user_id else ""
+
+    full_prompt = (
+        f"Context: {context}\n"
+        f"Game state: {game_state}\n"
+        f"Player: {user_input}\n"
+        f"Respond to player's input using the context and game state. Create a single next narration that is concise.\n"
+        f"DM: "
+    )   
+
+    print("Prompt:")
+    print(game_state)
+
+    out = dm_generator(
+        full_prompt,
+        max_new_tokens=80,
+        do_sample=True,
+        top_p=0.4,
+        pad_token_id=tokenizer.eos_token_id,
+    )[0]["generated_text"]
+
+    # Parse out the DM line since the model tends to ramble and not follow instructions
+    lines = out.split('\n')
+
+    # Find the first line that starts with 'DM:'
+    dm_index = next((i for i, line in enumerate(lines) if line.startswith('DM:')), None)
+
+    if dm_index is not None:
+        first_dm_line = lines[dm_index].replace("DM:", "", 1).strip()
+        subsequent_lines = lines[dm_index+1:]
+        
+        dm_content = first_dm_line + '\n' + '\n'.join(subsequent_lines)
+        return dm_content
+        
+        # additional_lines = []
+        # for line in subsequent_lines:
+        #     if line.startswith("Player:"):
+        #         break
+        #     additional_lines.append(line.strip())
+
+        # dm_content = first_dm_line + '\n' + '\n'.join(additional_lines)
+        # return dm_content
+    else:
+        return None
+
+def get_formatted_game_state(user_id: str) -> str:
+    """Retrieve and format the current game state for a user"""
+    try:
+        # Get all characters for the user
+        characters_result = game_service.get_user_characters(user_id)
+        
+        if not characters_result["success"] or not characters_result["data"]:
+            return "No active characters in the game."
+        
+        characters = characters_result["data"]
+        
+        # Format characters into a compact game state representation
+        game_state_data = []
+        for char in characters:
+            char_info = {
+                "name": char.get("name", "Unknown"),
+                "race": char.get("race", "Unknown"),
+                "class": char.get("characterClass", "Unknown"),
+                "level": char.get("level", 1),
+                "hp": char.get("hitPoints", 0),
+                "ac": char.get("armorClass", 10),
+                "weapon": char.get("weapon", "Fists"),
+                "items": char.get("items", []),
+                "mana": char.get("mana", 0),
+                "status": char.get("status", "Normal")
+            }
+            game_state_data.append(char_info)
+        
+        # Convert to compact JSON string
+        return json.dumps(game_state_data, separators=(",", ":"))
+        
+    except Exception as e:
+        return f"Error retrieving game state: {str(e)}"
 
 def load_all_chunks(bucket_name: str, file_name: str, supabase_client: Client, source_filter: str = None, user_token: str = None):
     all_chunks = []
