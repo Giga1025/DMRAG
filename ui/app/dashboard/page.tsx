@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { charactersApi, chunksApi } from '@/lib/data'
+import { charactersApi } from '@/lib/data'
 import type { Character } from '@/lib/types'
 import type { User } from '@supabase/supabase-js'
 

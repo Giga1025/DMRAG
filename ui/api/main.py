@@ -220,35 +220,6 @@ async def generate_response(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
 
-@api_router.post("/load_chunks")
-async def load_chunks(request: LoadChunksRequest, auth_data = Depends(get_user_and_token)):
-    """Load chunks from a file in Supabase Storage"""
-    try:
-        user, token = auth_data
-        
-        # Hardcoded bucket and file name
-        chunks = load_all_chunks(
-            bucket_name="jsonl-files",
-            file_name="first_200.jsonl",
-            supabase_client=supabase,
-            source_filter=request.source_filter,
-            user_token=token
-        )
-        
-        return {
-            "success": True,
-            "data": chunks,
-            "count": len(chunks),
-            "message": f"Successfully loaded {len(chunks)} chunks from jsonl-files/first_200.jsonl"
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "data": None,
-            "count": 0
-        }
-
 def general_model_response(user_input: str, model, tokenizer, context: str = "", user_id: str = "") -> Optional[str]:
     """Generate a response using the specified model and tokenizer"""
     dm_generator = pipeline(
@@ -380,7 +351,3 @@ app.include_router(api_router)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 
-
-
-
-# TODO: Model response generation w gpt2

@@ -117,13 +117,6 @@ export const dndApi = {
   }
 }
 
-// Chunks API for loading game data
-export const chunksApi = {
-  async loadChunks(sourceFilter?: string): Promise<any[]> {
-    return apiRequest<any[]>('/load_chunks', 'POST', { source_filter: sourceFilter })
-  }
-}
-
 // Model API for AI response generation
 export const modelApi = {
   async generateResponse(user_input: string): Promise<{ response: string; }> {
