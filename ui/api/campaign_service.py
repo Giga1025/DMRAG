@@ -1,4 +1,5 @@
 from typing import Dict, Any, List, Optional
+from datetime import datetime
 from supabase import Client
 
 class CampaignService:
@@ -8,9 +9,23 @@ class CampaignService:
     def create_campaign(self, campaign_data: Dict, user_id: str) -> Dict:
         """Create a new campaign"""
         try:
+            # Initialize chat history with the initial message if it's empty
+            chat_history = campaign_data.get("chat_history", [])
+            if not chat_history and campaign_data.get("initial_message"):
+                chat_history = [{
+                    "role": "assistant",
+                    "content": campaign_data["initial_message"],
+                    "timestamp": datetime.now().isoformat()
+                }]
+            
+            # Initialize game state history with provided data or empty array
+            game_state_history = campaign_data.get("game_state_history", [])
+            
             data_to_insert = {
                 "owner_id": user_id,
-                **campaign_data
+                **campaign_data,
+                "chat_history": chat_history,
+                "game_state_history": game_state_history
             }
             
             response = self.supabase.table('Campaigns').insert(data_to_insert).execute()

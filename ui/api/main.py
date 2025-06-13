@@ -281,6 +281,7 @@ async def get_retriever_status(user: str = Depends(get_current_user)):
 @api_router.post("/generate_response")
 async def generate_response(
     request: ModelResponseRequest,
+    campaign_id: str = None,
     auth_data = Depends(get_user_and_token)
 ):
     """Generate a response using the fine-tuned GPT-2 model stored in /models"""
@@ -300,6 +301,14 @@ async def generate_response(
             if _cached_tokenizer.pad_token is None:
                 _cached_tokenizer.pad_token = _cached_tokenizer.eos_token
 
+        # Get campaign filter if provided
+        source_filter = None
+        if campaign_id:
+            campaign_result = campaign_service.get_campaign(campaign_id, user.id)
+            if campaign_result["success"]:
+                source_filter = campaign_result["data"].get("filter_title")
+                print(f"Using source filter: {source_filter}")
+
         # Initialize retriever if not already done
         retriever_status = retriever_service.get_status()
         if not retriever_status.get("initialized", False):
@@ -309,7 +318,7 @@ async def generate_response(
                 bucket_name="jsonl-files",
                 file_name="first_200.jsonl",
                 supabase_client=supabase,
-                source_filter=None,  # No filter for now
+                source_filter=source_filter,
                 user_token=token
             )
 

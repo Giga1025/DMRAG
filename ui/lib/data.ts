@@ -139,8 +139,12 @@ export const dndApi = {
 
 // Model API for AI response generation
 export const modelApi = {
-  async generateResponse(user_input: string): Promise<{ response: string; }> {
-    return apiRequest<{ response: string; }>('/generate_response', 'POST', { 
+  async generateResponse(user_input: string, campaign_id?: string): Promise<{ response: string; }> {
+    const endpoint = campaign_id 
+      ? `/generate_response?campaign_id=${campaign_id}`
+      : '/generate_response';
+    
+    return apiRequest<{ response: string; }>(endpoint, 'POST', { 
       user_input, 
     })
   }

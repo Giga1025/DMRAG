@@ -52,6 +52,8 @@ export interface GameState {
 export interface Campaign {
   id: string
   campaign_title: string
+  filter_title: string
+  initial_message: string
   chat_history: any[]
   game_state_history: any[]
   owner_id: string
@@ -60,12 +62,16 @@ export interface Campaign {
 
 export interface CampaignCreate {
   campaign_title: string
+  filter_title: string
+  initial_message: string
   chat_history?: any[]
   game_state_history?: any[]
 }
 
 export interface CampaignUpdate {
   campaign_title?: string
+  filter_title?: string
+  initial_message?: string
   chat_history?: any[]
   game_state_history?: any[]
 }

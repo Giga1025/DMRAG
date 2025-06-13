@@ -57,6 +57,8 @@ class ModelResponseRequest(BaseModel):
 # Campaign schemas
 class CampaignCreate(BaseModel):
     campaign_title: str
+    filter_title: str
+    initial_message: str
     chat_history: Optional[List[Dict[str, Any]]] = []
     game_state_history: Optional[List[Dict[str, Any]]] = []
 
@@ -67,5 +69,7 @@ class Campaign(CampaignCreate):
 
 class CampaignUpdate(BaseModel):
     campaign_title: Optional[str] = None
+    filter_title: Optional[str] = None
+    initial_message: Optional[str] = None
     chat_history: Optional[List[Dict[str, Any]]] = None
     game_state_history: Optional[List[Dict[str, Any]]] = None 

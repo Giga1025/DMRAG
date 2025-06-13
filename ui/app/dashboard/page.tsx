@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { charactersApi, campaignDetailsApi, campaignsApi } from '@/lib/data'
-import type { Character, CampaignDetail } from '@/lib/types'
+import type { Character, CampaignDetail, GameState } from '@/lib/types'
 import type { User } from '@supabase/supabase-js'
 
 // Character Edit Modal Component
@@ -487,16 +487,23 @@ export default function DashboardPage() {
 
   const handleCreateCampaign = async (campaignDetail: CampaignDetail, selectedCharacters: Character[]) => {
     try {
-      // Create the campaign with the selected campaign title
+      // Prepare initial game state with selected characters using the GameState interface
+      const initialGameState: GameState | null = selectedCharacters.length > 0 ? {
+        characters: selectedCharacters
+      } : null;
+
+      // Create the campaign with the selected campaign details and characters
       await campaignsApi.createCampaign({ 
-        campaign_title: campaignDetail.title 
+        campaign_title: campaignDetail.title,
+        filter_title: campaignDetail.filterTitle,
+        initial_message: campaignDetail.initialDescription,
+        game_state_history: initialGameState ? [initialGameState] : []
       })
       
       // Refresh user campaigns to show the new one
       await fetchUserCampaigns()
       
-      // TODO: Associate selected characters with the campaign
-      // For now, we'll just show a success message
+      // Show success message
       alert(`Campaign "${campaignDetail.title}" created successfully with ${selectedCharacters.length} character(s)!`)
       
       // Close the modal
@@ -754,6 +761,18 @@ export default function DashboardPage() {
                       <p className="font-medium text-black mb-2">Game State Updates:</p>
                       <p className="text-black">{campaign.game_state_history?.length || 0} updates</p>
                     </div>
+                    {campaign.game_state_history?.length > 0 && campaign.game_state_history[0]?.characters && (
+                      <div>
+                        <p className="font-medium text-black mb-2">Characters in Campaign:</p>
+                        <div className="text-black text-xs">
+                          {(campaign.game_state_history[0] as GameState).characters.map((char: Character, index: number) => (
+                            <span key={char.id || index} className="inline-block bg-blue-600 text-white px-2 py-1 rounded-full mr-1 mb-1">
+                              {char.name} (Lv.{char.level} {char.characterClass})
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mb-4">
@@ -765,7 +784,10 @@ export default function DashboardPage() {
 
                   <div className="space-y-3">
                     <div className="flex gap-2">
-                      <button className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg transition duration-200 shadow-lg">
+                      <button 
+                        onClick={() => router.push(`/chat?campaign=${campaign.id}`)}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg transition duration-200 shadow-lg"
+                      >
                         🎮 Continue Campaign
                       </button>
                       <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition duration-200 shadow-lg">
