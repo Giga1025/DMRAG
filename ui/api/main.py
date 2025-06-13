@@ -25,17 +25,16 @@ from api.middleware import (
     get_supabase_client
 )
 from api.schemas import (
-    Character,
     CharacterCreate,
-    ActionRequest,
-    DiceRollRequest,
-    LoadChunksRequest,
     InitializeRetrieverRequest,
     SearchRequest,
-    ModelResponseRequest
+    ModelResponseRequest,
+    CampaignCreate,
+    CampaignUpdate
 )
 from api.game_state_service import GameStateService
 from api.retriever_service import RetrieverService
+from api.campaign_service import CampaignService
 
 app = FastAPI(title="AI DM API", version="1.0.0")
 api_router = APIRouter()
@@ -49,6 +48,7 @@ supabase: Client = get_supabase_client()
 # Initialize services
 game_service = GameStateService(supabase)
 retriever_service = RetrieverService()
+campaign_service = CampaignService(supabase)
 
 # Character endpoints
 @api_router.get("/get_user_characters")
@@ -110,6 +110,131 @@ async def delete_character(character_id: str, user: str = Depends(get_current_us
             raise HTTPException(status_code=500, detail=result["error"])
     
     return result
+
+# Campaign endpoints
+@api_router.get("/get_user_campaigns")
+async def get_user_campaigns(user: str = Depends(get_current_user)):
+    """Get all campaigns for the current user"""
+    user_id = user.id
+    return campaign_service.get_user_campaigns(user_id)
+
+@api_router.post("/get_campaign")
+async def get_campaign(campaign_id: str, user: str = Depends(get_current_user)):
+    """Get a specific campaign by ID for the current user"""
+    user_id = user.id
+    result = campaign_service.get_campaign(campaign_id, user_id)
+    
+    if not result["success"]:
+        if "not found" in result["error"].lower():
+            raise HTTPException(status_code=404, detail=result["error"])
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    
+    return result
+
+@api_router.post("/create_campaign")
+async def create_campaign(campaign: CampaignCreate, user: str = Depends(get_current_user)):
+    """Create a new campaign"""
+    user_id = user.id
+    return campaign_service.create_campaign(campaign.dict(), user_id)
+
+@api_router.put("/update_campaign")
+async def update_campaign(
+    campaign_id: str,
+    updates: CampaignUpdate,
+    user: str = Depends(get_current_user)
+):
+    """Update a specific campaign for the current user"""
+    user_id = user.id
+    # Only include non-None fields in the update
+    update_data = {k: v for k, v in updates.dict().items() if v is not None}
+    result = campaign_service.update_campaign(campaign_id, update_data, user_id)
+    
+    if not result["success"]:
+        if "not found" in result["error"].lower():
+            raise HTTPException(status_code=404, detail=result["error"])
+        elif "no valid fields" in result["error"].lower():
+            raise HTTPException(status_code=400, detail=result["error"])
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    
+    return result
+
+@api_router.post("/delete_campaign")
+async def delete_campaign(campaign_id: str, user: str = Depends(get_current_user)):
+    """Delete a specific campaign for the current user"""
+    user_id = user.id
+    result = campaign_service.delete_campaign(campaign_id, user_id)
+    
+    if not result["success"]:
+        if "not found" in result["error"].lower():
+            raise HTTPException(status_code=404, detail=result["error"])
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    
+    return result
+
+@api_router.post("/add_chat_message")
+async def add_chat_message(
+    campaign_id: str,
+    message: Dict[str, Any],
+    user: str = Depends(get_current_user)
+):
+    """Add a message to campaign's chat history"""
+    user_id = user.id
+    result = campaign_service.add_chat_message(campaign_id, message, user_id)
+    
+    if not result["success"]:
+        if "not found" in result["error"].lower():
+            raise HTTPException(status_code=404, detail=result["error"])
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    
+    return result
+
+@api_router.post("/add_game_state_update")
+async def add_game_state_update(
+    campaign_id: str,
+    game_state: Dict[str, Any],
+    user: str = Depends(get_current_user)
+):
+    """Add a game state update to campaign's history"""
+    user_id = user.id
+    result = campaign_service.add_game_state_update(campaign_id, game_state, user_id)
+    
+    if not result["success"]:
+        if "not found" in result["error"].lower():
+            raise HTTPException(status_code=404, detail=result["error"])
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    
+    return result
+
+@api_router.get("/get_campaign_details")
+async def get_campaign_details(auth_data = Depends(get_user_and_token)):
+    """Fetch campaign details from the campaign_details.json file in supabase storage"""
+    try:
+        user, token = auth_data
+        
+        # Set the auth token for storage access
+        supabase.storage._client.headers.update({
+            "Authorization": f"Bearer {token}"
+        })
+        
+        # Download the campaign_details.json file from Supabase Storage
+        response = supabase.storage.from_("jsonl-files").download("campaign_details.json")
+        
+        # Convert bytes to string and parse JSON
+        file_content = response.decode('utf-8')
+        campaign_details = json.loads(file_content)
+        
+        return {
+            "success": True,
+            "data": campaign_details
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching campaign details: {str(e)}")
 
 # Retriever endpoints
 @api_router.post("/initialize_retriever")
@@ -351,3 +476,17 @@ app.include_router(api_router)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 
+
+
+# TODO:
+# 1. Campaign details incl. chat in supabase
+# 2. Source filter for chunks
+    """In the main.py file, there is a function load_all_chunks that accepts a source fiter
+This source filter is just a short string , which is stored in the filterTitle of the campaign_details.json
+I've stored this same json file in supabase storage under json-files bucket
+I want you to do this - 
+1. Make an api to fetch this campaign details file (you can reference existing code which fetches json files from the same bucket)
+2. Modify the frontend to have a view campaigns button, which displays all the details fetched from the file - you can make a barebones UI for now, or not, upto you
+3. """
+# 3. UI overhaul
+# 4. Starting new campaign -> campaign selection -> character selection

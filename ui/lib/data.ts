@@ -1,4 +1,4 @@
-import type { ApiResponse, Character } from './types'
+import type { ApiResponse, Character, Campaign, CampaignCreate, CampaignUpdate, CampaignDetailsResponse } from './types'
 import { createClient } from '@/lib/supabase'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -75,12 +75,32 @@ export const charactersApi = {
 
 // Campaign API calls
 export const campaignsApi = {
-  async getUserCampaigns(): Promise<any[]> {
-    return apiRequest<any[]>('/get_user_campaigns')
+  async getUserCampaigns(): Promise<Campaign[]> {
+    return apiRequest<Campaign[]>('/get_user_campaigns')
   },
 
-  async createCampaign(campaign: any): Promise<any> {
-    return apiRequest<any>('/create_campaign', 'POST', campaign)
+  async getCampaign(id: string): Promise<Campaign> {
+    return apiRequest<Campaign>(`/get_campaign?campaign_id=${id}`, 'POST')
+  },
+
+  async createCampaign(campaign: CampaignCreate): Promise<Campaign> {
+    return apiRequest<Campaign>('/create_campaign', 'POST', campaign)
+  },
+
+  async updateCampaign(id: string, updates: CampaignUpdate): Promise<Campaign> {
+    return apiRequest<Campaign>(`/update_campaign?campaign_id=${id}`, 'PUT', updates)
+  },
+
+  async deleteCampaign(id: string): Promise<void> {
+    return apiRequest<void>(`/delete_campaign?campaign_id=${id}`, 'POST')
+  },
+
+  async addChatMessage(campaignId: string, message: any): Promise<Campaign> {
+    return apiRequest<Campaign>(`/add_chat_message?campaign_id=${campaignId}`, 'POST', message)
+  },
+
+  async addGameStateUpdate(campaignId: string, gameState: any): Promise<Campaign> {
+    return apiRequest<Campaign>(`/add_game_state_update?campaign_id=${campaignId}`, 'POST', gameState)
   },
 
   async startAdventure(characterId: string, campaignSettings?: any): Promise<any> {
@@ -123,5 +143,12 @@ export const modelApi = {
     return apiRequest<{ response: string; }>('/generate_response', 'POST', { 
       user_input, 
     })
+  }
+}
+
+// Campaign Details API
+export const campaignDetailsApi = {
+  async getCampaignDetails(): Promise<CampaignDetailsResponse> {
+    return apiRequest<CampaignDetailsResponse>('/get_campaign_details')
   }
 } 

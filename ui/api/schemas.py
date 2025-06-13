@@ -39,15 +39,8 @@ class Character(CharacterCreate):
     owner_id: str
     created_at: str
 
-class ActionRequest(BaseModel):
-    action: str
-    choice: Optional[str] = None
-
-class DiceRollRequest(BaseModel):
-    dice: str
-
-class LoadChunksRequest(BaseModel):
-    source_filter: Optional[str] = None
+class GameState(BaseModel):
+    characters: List[Character]
 
 class InitializeRetrieverRequest(BaseModel):
     chunks: List[Dict[str, Any]]
@@ -59,4 +52,20 @@ class SearchRequest(BaseModel):
     alpha: Optional[float] = 0.2
 
 class ModelResponseRequest(BaseModel):
-    user_input: str 
+    user_input: str
+
+# Campaign schemas
+class CampaignCreate(BaseModel):
+    campaign_title: str
+    chat_history: Optional[List[Dict[str, Any]]] = []
+    game_state_history: Optional[List[Dict[str, Any]]] = []
+
+class Campaign(CampaignCreate):
+    id: str
+    owner_id: str
+    created_at: str
+
+class CampaignUpdate(BaseModel):
+    campaign_title: Optional[str] = None
+    chat_history: Optional[List[Dict[str, Any]]] = None
+    game_state_history: Optional[List[Dict[str, Any]]] = None 
