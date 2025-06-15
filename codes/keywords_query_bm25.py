@@ -8,13 +8,13 @@ import nltk
 from nltk import word_tokenize
 from rank_bm25 import BM25Okapi
 nltk.download('punkt_tab')
-# Load from .env file
-load_dotenv()
+load_dotenv()   # Load from .env file
+from lemmatizer_module import get_lemmas
 
 
 
 # Adding weights to the top rated chunks based on the keywords from the query
-def get_weighted_top_chunks(bm25, query_tokens, custom_weights, raw_chunks, top_n=5):
+def get_weighted_top_chunks(bm25, query_tokens, custom_weights, raw_chunks, top_n=10):
     scores = [0.0] * len(raw_chunks)
     for token in query_tokens:
         weight = custom_weights.get(token, 1.0)
@@ -23,6 +23,8 @@ def get_weighted_top_chunks(bm25, query_tokens, custom_weights, raw_chunks, top_
     
     top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_n]
     return [(raw_chunks[i], scores[i]) for i in top_indices]
+
+
 
 tokens = []
 chunk_ids = []
@@ -35,7 +37,10 @@ with open("/home/byash/project_files/data/jsonl_files/merged.jsonl",encoding='ut
         raw_chunks.append(item)
         tokens.append(word_tokenize(item["text"].lower()))
 
-bm25 = BM25Okapi(tokens)
+lemma_tokens = get_lemmas(tokens)
+# print(lemma_tokens[0])
+# print(tokens[0])
+bm25 = BM25Okapi(lemma_tokens)
 
 
 client = AzureOpenAI(
@@ -79,19 +84,23 @@ try:
     query_tokens = word_tokenize(" ".join(output["Keywords"]).lower())      # DE-capitalizing the words if any are present
     print(query_tokens)
 
+    lemmatized_query_toks = get_lemmas(query_tokens)    #We are lemmatizing the query_tokens to normalize the keywords here
+    print(lemmatized_query_toks)
+
+
     weight_message = """
     You are a helpful assistant. Given a Dungeons & Dragons scene description (Query) and its extracted Keywords, assign a relevance score to each keyword from 1 to 5 based on how essential it is to understanding the core action of the query.
 
-    - Score 5 → critical action or object (e.g., "fireball" in "cast a fireball")
-    - Score 4 → major characters or affected entities (e.g., "dragon", "goblin")
-    - Score 3 → important modifiers or conditions (e.g., "stairs", "behind")
-    - Score 2 → minor background details
-    - Score 1 → repeated/common or low-impact words
+    - Score 5 -> critical action or object (e.g., "fireball" in "cast a fireball")
+    - Score 4 -> major characters or affected entities (e.g., "dragon", "goblin")
+    - Score 3 -> important modifiers or conditions (e.g., "stairs", "behind")
+    - Score 2 -> minor background details
+    - Score 1 -> repeated/common or low-impact words
     
     Return only a dictionary like the following format:
     {"keyword": weight }"""
     system_message_weights = weight_message
-    user_message_weights = f"Query: {user_input}\nKeywords: [{query_tokens}]"
+    user_message_weights = f"Query: {user_input}\nKeywords: [{lemmatized_query_toks}]"
 
     messages_weights = [
     {"role": "system", "content": system_message_weights},
@@ -105,20 +114,11 @@ try:
     max_tokens=150
     )
 
-    # Parse weights
+
     keyword_weights = json.loads(response_weights.choices[0].message.content)
     print("Keyword Weights:", keyword_weights)
 
-    # top_chunks = bm25.get_top_n(query_tokens, raw_chunks, n=5)
-    # print("\n Top 5 Retrieved Chunks:")
-    # # for chunk in top_chunks:
-    # #   print(f"- {chunk['chunk_id']} → {chunk['text'][:120]}...\n")
-    # scores = bm25.get_scores(query_tokens)
-    # top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:10]
-    # for i in top_indices:
-    #     chunk = raw_chunks[i]
-    #     # print(f"{chunk['chunk_id']} (score={scores[i]:.2f}) → {chunk['text'][:500]}...\n")
-    top_chunks = get_weighted_top_chunks(bm25, query_tokens, keyword_weights, raw_chunks)
+    top_chunks = get_weighted_top_chunks(bm25, lemmatized_query_toks, keyword_weights, raw_chunks)
     for chunk, score in top_chunks:
        print(f"- {chunk['chunk_id']} {score}→ {chunk['text'][:1000]}...\n")
 
