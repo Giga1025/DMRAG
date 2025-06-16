@@ -1,3 +1,4 @@
+from collections import Counter
 import pandas as pd
 import os
 from openai import AzureOpenAI
@@ -24,7 +25,22 @@ def get_weighted_top_chunks(bm25, query_tokens, custom_weights, raw_chunks, top_
     top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_n]
     return [(raw_chunks[i], scores[i]) for i in top_indices]
 
+def single_tok_mwe(keywords, tokenized_corpus, repeatation = 1):
+    tokens = []
+    for token_list in tokenized_corpus:    # Our initial tokens are a list of lists...but here we just want a flattened tokens
+        for token in token_list:
+            tokens.append(token)
 
+    counter = Counter(tokens)    # Makes a dict of {"word" : count}
+    length_pre_appending = len(keywords)   #We dont want the loop to go more than the initial keyword size
+    new_keywords = keywords.copy()
+    
+    for i in range(length_pre_appending - 1):
+        joint = keywords[i] + keywords[i+1]    # Join the current and the next words into one word
+        if joint in counter and counter[joint] >= repeatation:   #check if the joined token is in the corupus, if it is there, then check if it occures more than 3 times(>= 4)
+            new_keywords.append(joint)  # If the above condition satistifes, append it to the new keywords list, which already has initial keywords
+    
+    return new_keywords
 
 tokens = []
 chunk_ids = []
@@ -84,7 +100,10 @@ try:
     query_tokens = word_tokenize(" ".join(output["Keywords"]).lower())      # DE-capitalizing the words if any are present
     print(query_tokens)
 
-    lemmatized_query_toks = get_lemmas(query_tokens)    #We are lemmatizing the query_tokens to normalize the keywords here
+    swe_tokenized_query = single_tok_mwe(query_tokens, tokens)
+    print(swe_tokenized_query)
+
+    lemmatized_query_toks = get_lemmas(swe_tokenized_query)    #We are lemmatizing the query_tokens to normalize the keywords here
     print(lemmatized_query_toks)
 
 
