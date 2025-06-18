@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { charactersApi } from '@/lib/data'
+import Toast, { useToast } from '@/components/Toast'
 
 // D&D 5e data
 const RACES = [
@@ -78,6 +79,7 @@ export default function CreateCharacterPage() {
   const [step, setStep] = useState(1)
   const router = useRouter()
   const supabase = createClient()
+  const { toast, showToast, hideToast } = useToast()
 
   const [character, setCharacter] = useState<Character>({
     name: '',
@@ -184,10 +186,10 @@ export default function CreateCharacterPage() {
 
       await charactersApi.createCharacter(characterData)
       console.log('Character saved successfully')
-      router.push('/dashboard')
+      router.push('/characters')
     } catch (error) {
       console.error('Error saving character:', error)
-      alert('Failed to save character. Please try again.')
+      showToast('Failed to save character. Please try again.', 'error')
     } finally {
       setSaving(false)
     }
@@ -195,67 +197,55 @@ export default function CreateCharacterPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
-        <div className="text-black text-xl">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900 flex items-center justify-center">
+        <div className="text-gray-300 text-xl">Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-      <nav className="bg-black bg-opacity-20 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-white">Character Creator</h1>
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="text-white hover:text-gray-300 transition duration-200"
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      </nav>
-
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900">
       <div className="container mx-auto px-4 py-8">
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-black text-sm">Step {step} of 5</span>
-            <span className="text-black text-sm">{Math.round((step / 5) * 100)}% Complete</span>
+            <span className="text-gray-300 text-sm">Step {step} of 5</span>
+            <span className="text-gray-300 text-sm">{Math.round((step / 5) * 100)}% Complete</span>
           </div>
           <div className="w-full bg-gray-700 rounded-full h-2">
             <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              className="bg-gray-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${(step / 5) * 100}%` }}
             ></div>
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-8">
+        <div className="max-w-4xl mx-auto bg-gray-800 bg-opacity-50 backdrop-blur-sm rounded-lg p-8 border border-gray-700">
           {/* Step 1: Basic Info */}
           {step === 1 && (
-            <div className="text-black">
-              <h2 className="text-3xl font-bold mb-6">Basic Information</h2>
+            <div>
+              <h2 className="text-3xl font-bold mb-6 text-gray-100">Basic Information</h2>
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Character Name</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Character Name</label>
                   <input
                     type="text"
                     value={character.name}
                     onChange={(e) => setCharacter(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white bg-opacity-20 rounded-lg text-black placeholder-gray-700 border border-black border-opacity-30"
+                    className="w-full px-4 py-2 bg-gray-700 rounded-lg text-gray-100 placeholder-gray-400 border border-gray-600 focus:border-gray-500 focus:outline-none"
                     placeholder="Enter character name"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Character Level</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Character Level</label>
                   <input
                     type="number"
                     min="1"
                     max="20"
                     value={character.level}
                     onChange={(e) => setCharacter(prev => ({ ...prev, level: parseInt(e.target.value) || 1 }))}
-                    className="w-32 px-4 py-2 bg-white bg-opacity-20 rounded-lg text-black border border-black border-opacity-30"
+                    className="w-32 px-4 py-2 bg-gray-700 rounded-lg text-gray-100 border border-gray-600 focus:border-gray-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -264,8 +254,8 @@ export default function CreateCharacterPage() {
 
           {/* Step 2: Race */}
           {step === 2 && (
-            <div className="text-black">
-              <h2 className="text-3xl font-bold mb-6">Choose Your Race</h2>
+            <div>
+              <h2 className="text-3xl font-bold mb-6 text-gray-100">Choose Your Race</h2>
               <div className="grid md:grid-cols-3 gap-4">
                 {RACES.map((race) => (
                   <button
@@ -273,12 +263,12 @@ export default function CreateCharacterPage() {
                     onClick={() => setCharacter(prev => ({ ...prev, race: race.id }))}
                     className={`p-4 rounded-lg border-2 transition-all duration-200 ${
                       character.race === race.id
-                        ? 'border-blue-500 bg-blue-500 bg-opacity-20'
-                        : 'border-black border-opacity-30 hover:border-opacity-50'
+                        ? 'border-gray-400 bg-gray-600 bg-opacity-50'
+                        : 'border-gray-600 hover:border-gray-500 bg-gray-700 bg-opacity-30'
                     }`}
                   >
-                    <h3 className="font-semibold text-lg mb-2">{race.name}</h3>
-                    <p className="text-black text-sm">{race.description}</p>
+                    <h3 className="font-semibold text-lg mb-2 text-gray-100">{race.name}</h3>
+                    <p className="text-gray-300 text-sm">{race.description}</p>
                   </button>
                 ))}
               </div>
@@ -287,8 +277,8 @@ export default function CreateCharacterPage() {
 
           {/* Step 3: Class */}
           {step === 3 && (
-            <div className="text-black">
-              <h2 className="text-3xl font-bold mb-6">Choose Your Class</h2>
+            <div>
+              <h2 className="text-3xl font-bold mb-6 text-gray-100">Choose Your Class</h2>
               <div className="grid md:grid-cols-3 gap-4">
                 {CLASSES.map((charClass) => (
                   <button
@@ -296,12 +286,12 @@ export default function CreateCharacterPage() {
                     onClick={() => setCharacter(prev => ({ ...prev, characterClass: charClass.id }))}
                     className={`p-4 rounded-lg border-2 transition-all duration-200 ${
                       character.characterClass === charClass.id
-                        ? 'border-green-500 bg-green-500 bg-opacity-20'
-                        : 'border-black border-opacity-30 hover:border-opacity-50'
+                        ? 'border-gray-400 bg-gray-600 bg-opacity-50'
+                        : 'border-gray-600 hover:border-gray-500 bg-gray-700 bg-opacity-30'
                     }`}
                   >
-                    <h3 className="font-semibold text-lg mb-2">{charClass.name}</h3>
-                    <p className="text-black text-sm">{charClass.description}</p>
+                    <h3 className="font-semibold text-lg mb-2 text-gray-100">{charClass.name}</h3>
+                    <p className="text-gray-300 text-sm">{charClass.description}</p>
                   </button>
                 ))}
               </div>
@@ -310,13 +300,13 @@ export default function CreateCharacterPage() {
 
           {/* Step 4: Background & Stats */}
           {step === 4 && (
-            <div className="text-black">
-              <h2 className="text-3xl font-bold mb-6">Background & Ability Scores</h2>
+            <div>
+              <h2 className="text-3xl font-bold mb-6 text-gray-100">Background & Ability Scores</h2>
               
               <div className="grid lg:grid-cols-2 gap-8">
                 {/* Background */}
                 <div>
-                  <h3 className="text-xl font-semibold mb-4">Background</h3>
+                  <h3 className="text-xl font-semibold mb-4 text-gray-100">Background</h3>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {BACKGROUNDS.map((bg) => (
                       <button
@@ -324,12 +314,12 @@ export default function CreateCharacterPage() {
                         onClick={() => setCharacter(prev => ({ ...prev, background: bg.id }))}
                         className={`w-full p-3 rounded-lg border text-left transition-all duration-200 ${
                           character.background === bg.id
-                            ? 'border-purple-500 bg-purple-500 bg-opacity-20'
-                            : 'border-black border-opacity-30 hover:border-opacity-50'
+                            ? 'border-gray-400 bg-gray-600 bg-opacity-50'
+                            : 'border-gray-600 hover:border-gray-500 bg-gray-700 bg-opacity-30'
                         }`}
                       >
-                        <div className="font-medium">{bg.name}</div>
-                        <div className="text-black text-sm">{bg.description}</div>
+                        <div className="font-medium text-gray-100">{bg.name}</div>
+                        <div className="text-gray-300 text-sm">{bg.description}</div>
                       </button>
                     ))}
                   </div>
@@ -338,10 +328,10 @@ export default function CreateCharacterPage() {
                 {/* Stats */}
                 <div>
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold">Ability Scores</h3>
+                    <h3 className="text-xl font-semibold text-gray-100">Ability Scores</h3>
                     <button
                       onClick={rollStats}
-                      className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg transition duration-200"
+                      className="bg-gray-600 hover:bg-gray-500 text-gray-100 px-4 py-2 rounded-lg transition duration-200"
                     >
                       🎲 Roll Stats
                     </button>
@@ -349,8 +339,8 @@ export default function CreateCharacterPage() {
                   
                   <div className="space-y-3">
                     {Object.entries(character.stats).map(([stat, value]) => (
-                      <div key={stat} className="flex justify-between items-center p-3 bg-white bg-opacity-10 rounded-lg">
-                        <span className="capitalize font-medium">{stat}</span>
+                      <div key={stat} className="flex justify-between items-center p-3 bg-gray-700 bg-opacity-50 rounded-lg border border-gray-600">
+                        <span className="capitalize font-medium text-gray-100">{stat}</span>
                         <div className="flex items-center gap-2">
                           <input
                             type="number"
@@ -361,9 +351,9 @@ export default function CreateCharacterPage() {
                               ...prev,
                               stats: { ...prev.stats, [stat]: parseInt(e.target.value) || 10 }
                             }))}
-                            className="w-16 px-2 py-1 bg-white bg-opacity-20 rounded text-center text-black"
+                            className="w-16 px-2 py-1 bg-gray-700 rounded text-center text-gray-100 border border-gray-600 focus:border-gray-500 focus:outline-none"
                           />
-                          <span className="text-black w-8 text-center">
+                          <span className="text-gray-300 w-8 text-center">
                             ({calculateModifier(value) >= 0 ? '+' : ''}{calculateModifier(value)})
                           </span>
                         </div>
@@ -377,35 +367,35 @@ export default function CreateCharacterPage() {
 
           {/* Step 5: Backstory & Review */}
           {step === 5 && (
-            <div className="text-black">
-              <h2 className="text-3xl font-bold mb-6">Backstory & Final Review</h2>
+            <div>
+              <h2 className="text-3xl font-bold mb-6 text-gray-100">Backstory & Final Review</h2>
               
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Character Backstory</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Character Backstory</label>
                   <textarea
                     value={character.backstory}
                     onChange={(e) => setCharacter(prev => ({ ...prev, backstory: e.target.value }))}
-                    className="w-full h-32 px-4 py-2 bg-white bg-opacity-20 rounded-lg text-black placeholder-gray-700 border border-black border-opacity-30"
+                    className="w-full h-32 px-4 py-2 bg-gray-700 rounded-lg text-gray-100 placeholder-gray-400 border border-gray-600 focus:border-gray-500 focus:outline-none"
                     placeholder="Tell us about your character's background, motivations, and history..."
                   />
                 </div>
 
                 {/* Character Summary */}
-                <div className="bg-white bg-opacity-10 rounded-lg p-6">
-                  <h3 className="text-xl font-semibold mb-4">Character Summary</h3>
+                <div className="bg-gray-700 bg-opacity-50 rounded-lg p-6 border border-gray-600">
+                  <h3 className="text-xl font-semibold mb-4 text-gray-100">Character Summary</h3>
                   <div className="grid md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p><strong>Name:</strong> {character.name || 'Unnamed'}</p>
-                      <p><strong>Race:</strong> {RACES.find(r => r.id === character.race)?.name || 'None'}</p>
-                      <p><strong>Class:</strong> {CLASSES.find(c => c.id === character.characterClass)?.name || 'None'}</p>
-                      <p><strong>Background:</strong> {BACKGROUNDS.find(b => b.id === character.background)?.name || 'None'}</p>
-                      <p><strong>Level:</strong> {character.level}</p>
+                    <div className="text-gray-300">
+                      <p><strong className="text-gray-100">Name:</strong> {character.name || 'Unnamed'}</p>
+                      <p><strong className="text-gray-100">Race:</strong> {RACES.find(r => r.id === character.race)?.name || 'None'}</p>
+                      <p><strong className="text-gray-100">Class:</strong> {CLASSES.find(c => c.id === character.characterClass)?.name || 'None'}</p>
+                      <p><strong className="text-gray-100">Background:</strong> {BACKGROUNDS.find(b => b.id === character.background)?.name || 'None'}</p>
+                      <p><strong className="text-gray-100">Level:</strong> {character.level}</p>
                     </div>
-                    <div>
-                      <p><strong>Hit Points:</strong> {calculateHitPoints()}</p>
-                      <p><strong>Armor Class:</strong> {10 + calculateModifier(character.stats.dexterity)}</p>
-                      <p><strong>Proficiency Bonus:</strong> +{character.proficiencyBonus}</p>
+                    <div className="text-gray-300">
+                      <p><strong className="text-gray-100">Hit Points:</strong> {calculateHitPoints()}</p>
+                      <p><strong className="text-gray-100">Armor Class:</strong> {10 + calculateModifier(character.stats.dexterity)}</p>
+                      <p><strong className="text-gray-100">Proficiency Bonus:</strong> +{character.proficiencyBonus}</p>
                     </div>
                   </div>
                 </div>
@@ -418,7 +408,7 @@ export default function CreateCharacterPage() {
             <button
               onClick={() => setStep(prev => Math.max(1, prev - 1))}
               disabled={step === 1}
-              className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-800 disabled:opacity-50 text-white px-6 py-2 rounded-lg transition duration-200"
+              className="bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:opacity-50 text-gray-100 px-6 py-2 rounded-lg transition duration-200"
             >
               Previous
             </button>
@@ -426,7 +416,13 @@ export default function CreateCharacterPage() {
             {step < 5 ? (
               <button
                 onClick={() => setStep(prev => prev + 1)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition duration-200"
+                disabled={
+                  (step === 1 && !character.name.trim()) ||
+                  (step === 2 && !character.race) ||
+                  (step === 3 && !character.characterClass) ||
+                  (step === 4 && !character.background)
+                }
+                className="bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:opacity-50 text-gray-100 px-6 py-2 rounded-lg transition duration-200"
               >
                 Next
               </button>
@@ -434,7 +430,7 @@ export default function CreateCharacterPage() {
               <button
                 onClick={saveCharacter}
                 disabled={saving || !character.name || !character.race || !character.characterClass}
-                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg transition duration-200"
+                className="bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:opacity-50 text-gray-100 px-6 py-2 rounded-lg transition duration-200"
               >
                 {saving ? 'Creating...' : 'Create Character'}
               </button>
@@ -442,6 +438,14 @@ export default function CreateCharacterPage() {
           </div>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+      />
     </div>
   )
 } 
