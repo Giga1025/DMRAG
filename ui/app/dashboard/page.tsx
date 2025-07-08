@@ -81,7 +81,7 @@ export default function DashboardPage() {
               
               <button 
                 onClick={() => router.push('/characters')}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-xl transition duration-300 font-semibold shadow-lg"
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-xl transition duration-300 font-semibold shadow-lg cursor-pointer"
               >
                 Manage Characters →
               </button>
@@ -118,7 +118,7 @@ export default function DashboardPage() {
               
               <button 
                 onClick={() => router.push('/campaigns')}
-                className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-3 rounded-xl transition duration-300 font-semibold shadow-lg"
+                className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-3 rounded-xl transition duration-300 font-semibold shadow-lg cursor-pointer"
               >
                 Manage Campaigns →
               </button>

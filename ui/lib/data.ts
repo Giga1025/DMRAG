@@ -1,4 +1,4 @@
-import type { ApiResponse, Character, Campaign, CampaignCreate, CampaignUpdate, CampaignDetailsResponse } from './types'
+import type { ApiResponse, Character, Campaign, CampaignCreate, CampaignCreateResponse, CampaignUpdate, CampaignDetailsResponse } from './types'
 import { createClient } from '@/lib/supabase'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -83,8 +83,8 @@ export const campaignsApi = {
     return apiRequest<Campaign>(`/get_campaign?campaign_id=${id}`, 'POST')
   },
 
-  async createCampaign(campaign: CampaignCreate): Promise<Campaign> {
-    return apiRequest<Campaign>('/create_campaign', 'POST', campaign)
+  async createCampaign(campaign: CampaignCreate): Promise<CampaignCreateResponse> {
+    return apiRequest<CampaignCreateResponse>('/create_campaign', 'POST', campaign)
   },
 
   async updateCampaign(id: string, updates: CampaignUpdate): Promise<Campaign> {

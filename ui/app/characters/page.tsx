@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase'
 import { charactersApi } from '@/lib/data'
 import type { Character } from '@/lib/types'
 import type { User } from '@supabase/supabase-js'
+import { getRaceName, getClassName } from '@/lib/constants'
 
 // Character Edit Modal Component
 function CharacterEditModal({ character, isOpen, onClose, onSave }: {
@@ -61,7 +62,7 @@ function CharacterEditModal({ character, isOpen, onClose, onSave }: {
           <h2 className="text-2xl font-bold text-gray-100">Edit Character</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-200 text-2xl"
+            className="text-gray-400 hover:text-gray-200 text-2xl cursor-pointer"
           >
             ✕
           </button>
@@ -139,13 +140,13 @@ function CharacterEditModal({ character, isOpen, onClose, onSave }: {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-3 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition duration-200"
+              className="flex-1 px-6 py-3 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition duration-200 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-gray-100 rounded-lg transition duration-200 border border-gray-600"
+              className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-gray-100 rounded-lg transition duration-200 border border-gray-600 cursor-pointer"
             >
               Save Changes
             </button>
@@ -183,13 +184,13 @@ function DeleteConfirmModal({ character, isOpen, onClose, onConfirm }: {
         <div className="flex gap-4">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition duration-200"
+            className="flex-1 px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition duration-200 cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition duration-200"
+            className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition duration-200 cursor-pointer"
           >
             Delete
           </button>
@@ -244,8 +245,6 @@ export default function CharactersPage() {
       setCharactersLoading(false)
     }
   }
-
-
 
   const calculateModifier = (stat: number) => {
     return Math.floor((stat - 10) / 2)
@@ -303,7 +302,7 @@ export default function CharactersPage() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/dashboard')}
-              className="bg-gray-700 hover:bg-gray-600 text-gray-100 p-2 rounded-lg transition duration-200 border border-gray-600"
+              className="bg-gray-700 hover:bg-gray-600 text-gray-100 p-2 rounded-lg transition duration-200 border border-gray-600 cursor-pointer"
               title="Back to Dashboard"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -318,7 +317,7 @@ export default function CharactersPage() {
           <div className="flex gap-4">
             <button
               onClick={() => router.push('/create-character')}
-              className="bg-green-600 hover:bg-green-700 text-gray-100 px-4 py-2 rounded-lg transition duration-200"
+              className="bg-green-600 hover:bg-green-700 text-gray-100 px-4 py-2 rounded-lg transition duration-200 cursor-pointer"
             >
               Create Character
             </button>
@@ -331,7 +330,7 @@ export default function CharactersPage() {
             <h2 className="text-2xl font-semibold text-gray-100">All Characters</h2>
             <button
               onClick={fetchCharacters}
-              className="bg-gray-700 hover:bg-gray-600 text-gray-100 px-4 py-2 rounded-lg transition duration-200 border border-gray-600"
+              className="bg-gray-700 hover:bg-gray-600 text-gray-100 px-4 py-2 rounded-lg transition duration-200 border border-gray-600 cursor-pointer"
             >
               🔄 Refresh
             </button>
@@ -353,7 +352,7 @@ export default function CharactersPage() {
               <p className="text-gray-400 mb-6">Create your first character to begin your adventure!</p>
               <button
                 onClick={() => router.push('/create-character')}
-                className="bg-gray-700 hover:bg-gray-600 text-gray-100 px-6 py-3 rounded-lg transition duration-200 border border-gray-600"
+                className="bg-gray-700 hover:bg-gray-600 text-gray-100 px-6 py-3 rounded-lg transition duration-200 border border-gray-600 cursor-pointer"
               >
                 Create Your First Character
               </button>
@@ -373,8 +372,8 @@ export default function CharactersPage() {
                   </div>
                   
                   <div className="text-sm space-y-2 mb-4 text-gray-300">
-                    <p><span className="font-medium text-gray-200">Race:</span> {character.race}</p>
-                    <p><span className="font-medium text-gray-200">Class:</span> {character.characterClass}</p>
+                                    <p><span className="font-medium text-gray-200">Race:</span> {getRaceName(character.race)}</p>
+                <p><span className="font-medium text-gray-200">Class:</span> {getClassName(character.characterClass)}</p>
                     <p><span className="font-medium text-gray-200">Background:</span> {character.background?.name || 'Unknown'}</p>
                   </div>
 
@@ -406,23 +405,23 @@ export default function CharactersPage() {
 
                   <div className="space-y-3">
                     <div className="flex gap-2">
-                      <button className="flex-1 bg-gray-600 hover:bg-gray-500 text-gray-100 px-3 py-2 rounded-lg text-sm transition duration-200 border border-gray-500">
+                      <button className="flex-1 bg-gray-600 hover:bg-gray-500 text-gray-100 px-3 py-2 rounded-lg text-sm transition duration-200 border border-gray-500 cursor-pointer">
                         View Details
                       </button>
-                      <button className="flex-1 bg-gray-600 hover:bg-gray-500 text-gray-100 px-3 py-2 rounded-lg text-sm transition duration-200 border border-gray-500">
+                      <button className="flex-1 bg-gray-600 hover:bg-gray-500 text-gray-100 px-3 py-2 rounded-lg text-sm transition duration-200 border border-gray-500 cursor-pointer">
                         Start Adventure
                       </button>
                     </div>
                     <div className="flex gap-2">
                       <button 
                         onClick={() => handleEditCharacter(character)}
-                        className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2 rounded-lg text-sm transition duration-200"
+                        className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2 rounded-lg text-sm transition duration-200 cursor-pointer"
                       >
                         ✏️ Edit
                       </button>
                       <button 
                         onClick={() => handleDeleteCharacter(character)}
-                        className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm transition duration-200"
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm transition duration-200 cursor-pointer"
                       >
                         🗑️ Delete
                       </button>

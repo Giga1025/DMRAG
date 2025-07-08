@@ -68,6 +68,15 @@ export interface CampaignCreate {
   game_state_history?: any[]
 }
 
+export interface CampaignCreateResponse extends Campaign {
+  initialization?: {
+    success: boolean
+    message: string
+    chunks_loaded?: number
+    error?: string
+  }
+}
+
 export interface CampaignUpdate {
   campaign_title?: string
   filter_title?: string

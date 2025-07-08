@@ -191,7 +191,7 @@ export default function ChatPage() {
               <span>Campaign ID: {campaign.id.slice(0, 8)}...</span>
               <button 
                 onClick={() => router.push('/dashboard')}
-                className="text-purple-600 hover:text-purple-800 underline"
+                className="text-purple-600 hover:text-purple-800 underline cursor-pointer"
               >
                 ← Back to Dashboard
               </button>
@@ -256,7 +256,7 @@ export default function ChatPage() {
             />
             <button 
               onClick={handleSendMessage}
-              className="sendButton"
+              className="sendButton cursor-pointer"
               disabled={!inputMessage.trim() || isLoading}
             >
               <span>⚡</span>

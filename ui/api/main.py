@@ -5,24 +5,103 @@ from datetime import datetime
 import uuid as uuid_module
 import json
 import io
+import os
 from supabase import Client
 import uvicorn
 from transformers import pipeline, GPT2Tokenizer, GPT2LMHeadModel
 import torch
 from pathlib import Path
 
+
+
 # Determine project root directory relative to this file (ui/api/main.py -> project root is two levels up)
 BASE_DIR = Path(__file__).resolve().parents[2]
 
-# Cache variables to store the loaded model/tokenizer across requests
-_cached_model = None
-_cached_tokenizer = None
+# Simple global caches
+_model_cache = {}
+_retriever_cache = {}  # Cache retrievers by filter_title
+
+def get_or_load_model(model_path: str):
+    """Get model from cache or load it if not cached"""
+    if model_path not in _model_cache:
+        print(f"Loading model {model_path}")
+        
+        tokenizer = GPT2Tokenizer.from_pretrained(model_path)
+        model = GPT2LMHeadModel.from_pretrained(model_path)
+        
+        # Ensure padding token exists
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+        
+        _model_cache[model_path] = {
+            "model": model,
+            "tokenizer": tokenizer
+        }
+        print(f"Model {model_path} loaded and cached")
+    else:
+        print(f"Using cached model {model_path}")
+    
+    return _model_cache[model_path]
+
+def get_or_load_retriever(filter_title: str, user_token: str):
+    """Get retriever from cache or load it if not cached"""
+    cache_key = filter_title  # Use filter_title as cache key
+    
+    if cache_key not in _retriever_cache:
+        print(f"🔄 Loading retriever for filter '{filter_title}'")
+        
+        # Load chunks with the specific filter
+        chunks = load_all_chunks(
+            bucket_name=CHUNKS_BUCKET,
+            file_name=CHUNKS_FILE,
+            supabase_client=supabase,
+            source_filter=filter_title,
+            user_token=user_token
+        )
+        
+        # Create retriever instance
+        from api.retriever_service import HybridRetriever
+        retriever = HybridRetriever(chunks, embedding_model_path=DND_EMBEDDING_MODEL_PATH)
+        
+        _retriever_cache[cache_key] = {
+            "retriever": retriever,
+            "chunks_count": len(chunks),
+            "filter_title": filter_title
+        }
+        print(f"✅ Retriever for filter '{filter_title}' loaded and cached ({len(chunks)} chunks)")
+    else:
+        print(f"⚡ Using cached retriever for filter '{filter_title}'")
+    
+    return _retriever_cache[cache_key]
+
+def clear_model_cache():
+    """Clear the model cache (useful for development/debugging)"""
+    global _model_cache
+    _model_cache.clear()
+    print("🗑️ Model cache cleared")
+
+def clear_retriever_cache():
+    """Clear the retriever cache (useful for development/debugging)"""
+    global _retriever_cache
+    _retriever_cache.clear()
+    print("🗑️ Retriever cache cleared")
+
+def clear_all_caches():
+    """Clear all caches"""
+    clear_model_cache()
+    clear_retriever_cache()
+    print("🗑️ All caches cleared")
+
+
+
+
 
 from api.middleware import (
     setup_middleware,
     get_current_user, 
     get_user_and_token,
-    get_supabase_client
+    get_supabase_client,
+    is_huggingface_authenticated
 )
 from api.schemas import (
     CharacterCreate,
@@ -35,6 +114,16 @@ from api.schemas import (
 from api.game_state_service import GameStateService
 from api.retriever_service import RetrieverService
 from api.campaign_service import CampaignService
+from api.config import (
+    GPT2_DND_MODEL_PATH, 
+    DND_EMBEDDING_MODEL_PATH,
+    DEFAULT_TOP_K,
+    DEFAULT_ALPHA, 
+    DEFAULT_MAX_NEW_TOKENS,
+    CHUNKS_BUCKET,
+    CHUNKS_FILE,
+    CAMPAIGN_DETAILS_FILE
+)
 
 app = FastAPI(title="AI DM API", version="1.0.0")
 api_router = APIRouter()
@@ -133,10 +222,31 @@ async def get_campaign(campaign_id: str, user: str = Depends(get_current_user)):
     return result
 
 @api_router.post("/create_campaign")
-async def create_campaign(campaign: CampaignCreate, user: str = Depends(get_current_user)):
-    """Create a new campaign"""
+async def create_campaign(campaign: CampaignCreate, auth_data = Depends(get_user_and_token)):
+    """Create a new campaign and initialize its AI resources"""
+    user, token = auth_data
     user_id = user.id
-    return campaign_service.create_campaign(campaign.dict(), user_id)
+    
+    # Create the campaign first
+    campaign_result = campaign_service.create_campaign(campaign.dict(), user_id)
+    
+    if campaign_result["success"]:
+        campaign_id = campaign_result["data"]["id"]
+        filter_title = campaign_result["data"].get("filter_title")
+        
+        # Warm up model and retriever for this campaign (pre-load for faster responses)
+        if filter_title:
+            init_result = await initialize_campaign_resources(campaign_id, filter_title, token)
+            
+            # Add initialization status to the campaign data (not top-level response)
+            campaign_result["data"]["initialization"] = init_result
+            
+            if not init_result["success"]:
+                print(f"Warning: Failed to warm up resources for campaign {campaign_id}: {init_result.get('error')}")
+        else:
+            print(f"Warning: No filter_title found for campaign {campaign_id}, skipping resource warm-up")
+    
+    return campaign_result
 
 @api_router.put("/update_campaign")
 async def update_campaign(
@@ -222,7 +332,7 @@ async def get_campaign_details(auth_data = Depends(get_user_and_token)):
         })
         
         # Download the campaign_details.json file from Supabase Storage
-        response = supabase.storage.from_("jsonl-files").download("campaign_details.json")
+        response = supabase.storage.from_(CHUNKS_BUCKET).download(CAMPAIGN_DETAILS_FILE)
         
         # Convert bytes to string and parse JSON
         file_content = response.decode('utf-8')
@@ -284,59 +394,38 @@ async def generate_response(
     campaign_id: str = None,
     auth_data = Depends(get_user_and_token)
 ):
-    """Generate a response using the fine-tuned GPT-2 model stored in /models"""
+    """Generate a response using the fine-tuned GPT-2 model"""
     try:
         user, token = auth_data
         
-        # Define the model path relative to project root
-        MODEL_PATH = str(BASE_DIR / "models/gpt2_dnd_finetuned/gpt2_dnd_finetuned")
-
-        # Use simple in-memory cache to avoid reloading the model on every request
-        global _cached_model, _cached_tokenizer
-        if _cached_model is None or _cached_tokenizer is None:
-            _cached_tokenizer = GPT2Tokenizer.from_pretrained(MODEL_PATH)
-            _cached_model = GPT2LMHeadModel.from_pretrained(MODEL_PATH)
-
-            # Ensure padding token exists
-            if _cached_tokenizer.pad_token is None:
-                _cached_tokenizer.pad_token = _cached_tokenizer.eos_token
-
-        # Get campaign filter if provided
-        source_filter = None
-        if campaign_id:
-            campaign_result = campaign_service.get_campaign(campaign_id, user.id)
-            if campaign_result["success"]:
-                source_filter = campaign_result["data"].get("filter_title")
-                print(f"Using source filter: {source_filter}")
-
-        # Initialize retriever if not already done
-        retriever_status = retriever_service.get_status()
-        if not retriever_status.get("initialized", False):
-            print("Retriever not initialized, loading chunks and initializing retriever")
-            # Load chunks and initialize retriever
-            chunks = load_all_chunks(
-                bucket_name="jsonl-files",
-                file_name="first_200.jsonl",
-                supabase_client=supabase,
-                source_filter=source_filter,
-                user_token=token
-            )
-
-            # Initialize retriever with loaded chunks
-            init_result = retriever_service.initialize_retriever(chunks)
-
-            print("Retriever initialization result:")
-            print(init_result)
-
-        # Retrieve relevant context using hybrid search
-        search_result = retriever_service.search(request.user_input, top_k=3, alpha=0.2)
-
-        context = ""
-        if search_result["success"]:
-            # Format the retrieved chunks as context
-            context = "\n\n".join(chunk["text"] for chunk in search_result["results"])
+        if not campaign_id:
+            raise HTTPException(status_code=400, detail="campaign_id is required")
         
-        response = general_model_response(request.user_input, _cached_model, _cached_tokenizer, context, user.id)
+        # Use cached model (fast after warm-up during campaign creation)
+        
+        # Get model from cache (or load if not cached)
+        model_cache = get_or_load_model(GPT2_DND_MODEL_PATH)
+        model = model_cache["model"]
+        tokenizer = model_cache["tokenizer"]
+        
+        # Get campaign details for source filter
+        campaign_result = campaign_service.get_campaign(campaign_id, user.id)
+        if not campaign_result["success"]:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        
+        filter_title = campaign_result["data"].get("filter_title")
+        if not filter_title:
+            raise HTTPException(status_code=400, detail="Campaign filter_title not found")
+        
+        # Get cached retriever (fast after warm-up during campaign creation)
+        retriever_cache = get_or_load_retriever(filter_title, token)
+        retriever = retriever_cache["retriever"]
+        
+        # Perform hybrid search
+        search_results = retriever.hybrid_search(request.user_input, top_k=DEFAULT_TOP_K, alpha=DEFAULT_ALPHA)
+        context = retriever.format_context(search_results)
+        
+        response = general_model_response(request.user_input, model, tokenizer, context, user.id)
 
         if response is None:
             return {
@@ -379,7 +468,7 @@ def general_model_response(user_input: str, model, tokenizer, context: str = "",
 
     out = dm_generator(
         full_prompt,
-        max_new_tokens=80,
+        max_new_tokens=DEFAULT_MAX_NEW_TOKENS,
         do_sample=True,
         top_p=0.4,
         pad_token_id=tokenizer.eos_token_id,
@@ -408,6 +497,32 @@ def general_model_response(user_input: str, model, tokenizer, context: str = "",
         # return dm_content
     else:
         return None
+
+async def initialize_campaign_resources(campaign_id: str, filter_title: str, user_token: str) -> Dict[str, Any]:
+    """Initialize and warm up model and retriever resources for a campaign"""
+    try:
+        print(f"Warming up resources for campaign {campaign_id}...")
+        
+        # Load and cache the model (will be fast on subsequent requests)
+        get_or_load_model(GPT2_DND_MODEL_PATH)
+        
+        # Load and cache the retriever for this filter
+        retriever_cache = get_or_load_retriever(filter_title, user_token)
+        
+        print(f"✅ Models and retriever warmed up for campaign {campaign_id}")
+        
+        return {
+            "success": True,
+            "message": f"Campaign initialized successfully",
+            "chunks_loaded": retriever_cache["chunks_count"]
+        }
+        
+    except Exception as e:
+        print(f"❌ Error warming up campaign resources: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 def get_formatted_game_state(user_id: str) -> str:
     """Retrieve and format the current game state for a user"""
@@ -485,17 +600,3 @@ app.include_router(api_router)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 
-
-
-# TODO:
-# 1. Campaign details incl. chat in supabase
-# 2. Source filter for chunks
-    """In the main.py file, there is a function load_all_chunks that accepts a source fiter
-This source filter is just a short string , which is stored in the filterTitle of the campaign_details.json
-I've stored this same json file in supabase storage under json-files bucket
-I want you to do this - 
-1. Make an api to fetch this campaign details file (you can reference existing code which fetches json files from the same bucket)
-2. Modify the frontend to have a view campaigns button, which displays all the details fetched from the file - you can make a barebones UI for now, or not, upto you
-3. """
-# 3. UI overhaul
-# 4. Starting new campaign -> campaign selection -> character selection

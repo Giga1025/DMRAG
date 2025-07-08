@@ -19,13 +19,13 @@ export default function HomePage() {
           <div className="flex gap-6 justify-center">
             <Link
               href="/login"
-              className="bg-gray-700 hover:bg-gray-600 text-gray-100 font-semibold py-3 px-8 rounded-lg transition duration-200 border border-gray-600"
+              className="bg-gray-700 hover:bg-gray-600 text-gray-100 font-semibold py-3 px-8 rounded-lg transition duration-200 border border-gray-600 cursor-pointer"
             >
               Login
             </Link>
             <Link
               href="/signup"
-              className="bg-gray-800 hover:bg-gray-700 text-gray-100 font-semibold py-3 px-8 rounded-lg transition duration-200 border border-gray-500"
+              className="bg-gray-800 hover:bg-gray-700 text-gray-100 font-semibold py-3 px-8 rounded-lg transition duration-200 border border-gray-500 cursor-pointer"
             >
               Sign Up
             </Link>

@@ -10,13 +10,19 @@ from rank_bm25 import BM25Okapi
 from sklearn.preprocessing import normalize
 from sentence_transformers import SentenceTransformer
 
+from api.config import DND_EMBEDDING_MODEL_PATH
+
 # Determine project root directory relative to this file
 BASE_DIR = Path(__file__).resolve().parents[2]
 
 class HybridRetriever:
-    def __init__(self, chunks: List[Dict[str, Any]], embedding_model_path: str = "dnd_finetuned_bge/dnd_finetuned_bge"):
+    def __init__(self, chunks: List[Dict[str, Any]], embedding_model_path: str = None):
         self.chunks = chunks
         self.texts = [chunk["text"] for chunk in self.chunks]
+        
+        # Use default embedding model if none provided
+        if embedding_model_path is None:
+            embedding_model_path = DND_EMBEDDING_MODEL_PATH
 
         # Initialize BM25
         self.tokenized_corpus = [re.findall(r"\w+", text.lower()) for text in self.texts]
@@ -93,7 +99,7 @@ class HybridRetriever:
 class RetrieverService:
     def __init__(self):
         self.retriever = None
-        self.embedding_model_path = str(BASE_DIR / "models/dnd_finetuned_bge/dnd_finetuned_bge")
+        self.embedding_model_path = DND_EMBEDDING_MODEL_PATH
     
     def initialize_retriever(self, chunks: List[Dict[str, Any]], embedding_model_path: str = None) -> Dict[str, Any]:
         """

@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { campaignDetailsApi, campaignsApi, charactersApi } from '@/lib/data'
-import type { Character, CampaignDetail, GameState } from '@/lib/types'
+import type { Character, CampaignDetail, GameState, CampaignCreateResponse } from '@/lib/types'
 import type { User } from '@supabase/supabase-js'
 import Toast, { useToast } from '@/components/Toast'
 import ConfirmModal from '@/components/ConfirmModal'
+import { getRaceName, getClassName } from '@/lib/constants'
 
 // Create Campaign Modal Component
 function CreateCampaignModal({ isOpen, onClose, campaignDetails, characters, onCreateCampaign }: {
@@ -67,7 +68,7 @@ function CreateCampaignModal({ isOpen, onClose, campaignDetails, characters, onC
           <h2 className="text-2xl font-bold text-gray-100">Create New Campaign</h2>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-200 text-2xl"
+            className="text-gray-400 hover:text-gray-200 text-2xl cursor-pointer"
           >
             ✕
           </button>
@@ -124,7 +125,7 @@ function CreateCampaignModal({ isOpen, onClose, campaignDetails, characters, onC
                         <div className="text-green-400 text-sm">✓ Selected</div>
                       )}
                       <div className="text-sm text-gray-300">
-                        Level {character.level} {character.race} {character.characterClass}
+                        Level {character.level} {getRaceName(character.race)} {getClassName(character.characterClass)}
                       </div>
                     </div>
                   ))}
@@ -135,7 +136,7 @@ function CreateCampaignModal({ isOpen, onClose, campaignDetails, characters, onC
             <div className="flex gap-4 mt-6">
               <button
                 onClick={handleBack}
-                className="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition duration-200"
+                className="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition duration-200 cursor-pointer"
               >
                 Back
               </button>
@@ -144,7 +145,7 @@ function CreateCampaignModal({ isOpen, onClose, campaignDetails, characters, onC
                 disabled={selectedCharacters.length === 0}
                 className={`px-6 py-2 rounded-lg transition duration-200 ${
                   selectedCharacters.length > 0
-                    ? 'bg-gray-700 hover:bg-gray-600 text-gray-100 border border-gray-600'
+                    ? 'bg-gray-700 hover:bg-gray-600 text-gray-100 border border-gray-600 cursor-pointer'
                     : 'bg-gray-800 text-gray-500 border border-gray-700 cursor-not-allowed'
                 }`}
               >
@@ -179,7 +180,7 @@ export default function CampaignsPage() {
   })
   const router = useRouter()
   const supabase = createClient()
-  const { toast, showToast, hideToast } = useToast()
+  const { toast, showToast, hideToast, showLoadingToast } = useToast()
 
   useEffect(() => {
     checkUser()
@@ -240,33 +241,48 @@ export default function CampaignsPage() {
     }
   }
 
-
-
   const handleCreateCampaign = async (campaignDetail: CampaignDetail, selectedCharacters: Character[]) => {
     try {
+      // Show persistent loading toast
+      showLoadingToast(`Creating campaign "${campaignDetail.title}"`)
+      
       // Prepare initial game state with selected characters using the GameState interface
       const initialGameState: GameState | null = selectedCharacters.length > 0 ? {
         characters: selectedCharacters
       } : null;
 
       // Create the campaign with the selected campaign details and characters
-      await campaignsApi.createCampaign({ 
+      const result = await campaignsApi.createCampaign({ 
         campaign_title: campaignDetail.title,
         filter_title: campaignDetail.filterTitle,
         initial_message: campaignDetail.initialDescription,
         game_state_history: initialGameState ? [initialGameState] : []
       })
       
+      // Hide loading toast first
+      hideToast()
+      
       // Refresh user campaigns to show the new one
       await fetchUserCampaigns()
       
-      // Show success message
-      showToast(`Campaign "${campaignDetail.title}" created successfully with ${selectedCharacters.length} character(s)!`, 'success')
+      // Show success message with initialization status
+      if (result.initialization?.success) {
+        // showToast(`Campaign "${campaignDetail.title}" created successfully! AI models are warmed up and ready for fast responses.`, 'success')
+        console.log(result)
+        console.log(result.initialization)
+        showToast(result.initialization.message, 'success')
+      } else {
+        // showToast(`Campaign "${campaignDetail.title}" created successfully! Note: AI models may take longer to load on first use.`, 'success')
+        console.log(result)
+        console.log(result.initialization)
+        showToast("Failed to initialize campaign. Please try again.", 'error')
+      }
       
       // Close the modal
       setCreateCampaignModalOpen(false)
     } catch (error) {
       console.error('Error creating campaign:', error)
+      hideToast() // Hide loading toast
       showToast('Failed to create campaign. Please try again.', 'error')
     }
   }
@@ -320,7 +336,7 @@ export default function CampaignsPage() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/dashboard')}
-              className="bg-gray-700 hover:bg-gray-600 text-gray-100 p-2 rounded-lg transition duration-200 border border-gray-600"
+              className="bg-gray-700 hover:bg-gray-600 text-gray-100 p-2 rounded-lg transition duration-200 border border-gray-600 cursor-pointer"
               title="Back to Dashboard"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -335,7 +351,7 @@ export default function CampaignsPage() {
           <div className="flex gap-4">
             <button
               onClick={() => setCreateCampaignModalOpen(true)}
-              className="bg-green-600 hover:bg-green-700 text-gray-100 px-4 py-2 rounded-lg transition duration-200"
+              className="bg-green-600 hover:bg-green-700 text-gray-100 px-4 py-2 rounded-lg transition duration-200 cursor-pointer"
             >
               Create Campaign
             </button>
@@ -348,7 +364,7 @@ export default function CampaignsPage() {
             <h2 className="text-2xl font-semibold text-gray-100">All Campaigns</h2>
             <button
               onClick={fetchUserCampaigns}
-              className="bg-gray-700 hover:bg-gray-600 text-gray-100 px-4 py-2 rounded-lg transition duration-200 border border-gray-600"
+              className="bg-gray-700 hover:bg-gray-600 text-gray-100 px-4 py-2 rounded-lg transition duration-200 border border-gray-600 cursor-pointer"
             >
               🔄 Refresh
             </button>
@@ -370,7 +386,7 @@ export default function CampaignsPage() {
               <p className="text-gray-400 mb-6">Create your first campaign to start your adventure!</p>
               <button 
                 onClick={() => setCreateCampaignModalOpen(true)}
-                className="bg-green-600 hover:bg-green-700 text-gray-100 px-6 py-3 rounded-lg transition duration-200"
+                className="bg-green-600 hover:bg-green-700 text-gray-100 px-6 py-3 rounded-lg transition duration-200 cursor-pointer"
               >
                 Create First Campaign
               </button>
@@ -404,7 +420,7 @@ export default function CampaignsPage() {
                         <div className="text-gray-300 text-xs">
                           {(campaign.game_state_history[0] as GameState).characters.map((char: Character, index: number) => (
                             <span key={char.id || index} className="inline-block bg-gray-600 text-gray-200 px-2 py-1 rounded-full mr-1 mb-1 border border-gray-500">
-                              {char.name} (Lv.{char.level} {char.characterClass})
+                              {char.name} (Lv.{char.level} {getClassName(char.characterClass)})
                             </span>
                           ))}
                         </div>
@@ -423,21 +439,21 @@ export default function CampaignsPage() {
                     <div className="flex gap-2">
                       <button 
                         onClick={() => router.push(`/chat?campaign=${campaign.id}`)}
-                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg transition duration-200"
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg transition duration-200 cursor-pointer"
                       >
                         🎮 Continue Campaign
                       </button>
-                      <button className="flex-1 bg-gray-600 hover:bg-gray-500 text-gray-100 px-4 py-3 rounded-lg transition duration-200 border border-gray-500">
+                      <button className="flex-1 bg-gray-600 hover:bg-gray-500 text-gray-100 px-4 py-3 rounded-lg transition duration-200 border border-gray-500 cursor-pointer">
                         📋 View Details
                       </button>
                     </div>
                     <div className="flex gap-2">
-                      <button className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2 rounded-lg text-sm transition duration-200">
+                      <button className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2 rounded-lg text-sm transition duration-200 cursor-pointer">
                         ✏️ Edit
                       </button>
                       <button 
                         onClick={() => handleDeleteCampaign(campaign.id, campaign.campaign_title)}
-                        className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm transition duration-200"
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm transition duration-200 cursor-pointer"
                       >
                         🗑️ Delete
                       </button>
@@ -477,6 +493,7 @@ export default function CampaignsPage() {
         type={toast.type}
         isVisible={toast.isVisible}
         onClose={hideToast}
+        persistent={toast.persistent}
       />
     </div>
   )

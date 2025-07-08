@@ -5,7 +5,27 @@ import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
+# HuggingFace authentication setup
+from huggingface_hub import login
+
 load_dotenv()
+
+def setup_huggingface_auth():
+    """Setup HuggingFace authentication for private models"""
+    hf_token = os.getenv('HUGGINGFACE_TOKEN')
+    if hf_token:
+        try:
+            login(token=hf_token, write_permission=False)
+            print("✅ HuggingFace authentication successful")
+            return True
+        except Exception as e:
+            print(f"⚠️ HuggingFace authentication failed: {e}")
+            print("Private models may not be accessible")
+            return False
+    else:
+        print("⚠️ HUGGINGFACE_TOKEN not found. Private models may not be accessible")
+        print("Set HUGGINGFACE_TOKEN environment variable for private model access")
+        return False
 
 # Supabase configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -15,6 +35,9 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def setup_middleware(app: FastAPI):
     """Setup all middleware for the FastAPI app"""
+    
+    # Setup HuggingFace authentication for private models
+    setup_huggingface_auth()
     
     # CORS middleware
     app.add_middleware(
@@ -54,4 +77,9 @@ async def get_user_and_token(authorization: Optional[str] = Header(None)) -> Tup
 
 # Export supabase client for use in other modules
 def get_supabase_client() -> Client:
-    return supabase 
+    return supabase
+
+# Export HuggingFace auth status check
+def is_huggingface_authenticated() -> bool:
+    """Check if HuggingFace authentication is available"""
+    return os.getenv('HUGGINGFACE_TOKEN') is not None 
