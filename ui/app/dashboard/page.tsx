@@ -3,11 +3,15 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { campaignsApi } from '@/lib/data'
 import type { User } from '@supabase/supabase-js'
+import type { Campaign } from '@/lib/types'
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [lastPlayedCampaign, setLastPlayedCampaign] = useState<Campaign | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -26,6 +30,7 @@ export default function DashboardPage() {
       }
 
       setUser(user)
+      await loadUserCampaigns()
     } catch (error) {
       console.error('Error checking user:', error)
       router.push('/login')
@@ -34,6 +39,60 @@ export default function DashboardPage() {
     }
   }
 
+  const loadUserCampaigns = async () => {
+    try {
+      const userCampaigns = await campaignsApi.getUserCampaigns()
+      setCampaigns(userCampaigns)
+      
+      // Find the campaign with the most recent activity
+      if (userCampaigns.length > 0) {
+        const campaignWithLastActivity = userCampaigns.reduce((latest, campaign) => {
+          // Get the most recent timestamp from chat history
+          const chatHistory = campaign.chat_history || []
+          const lastChatTime = chatHistory.length > 0 
+            ? Math.max(...chatHistory.map((msg: any) => new Date(msg.timestamp || 0).getTime()))
+            : 0
+
+          // Get the most recent timestamp from game state history  
+          const gameStateHistory = campaign.game_state_history || []
+          const lastGameStateTime = gameStateHistory.length > 0
+            ? Math.max(...gameStateHistory.map((state: any) => new Date(state.timestamp || 0).getTime()))
+            : 0
+
+          // Use the more recent of chat or game state, or fall back to created_at
+          const lastActivityTime = Math.max(lastChatTime, lastGameStateTime, new Date(campaign.created_at).getTime())
+
+          // Compare with current latest
+          const latestChatHistory = latest.chat_history || []
+          const latestLastChatTime = latestChatHistory.length > 0
+            ? Math.max(...latestChatHistory.map((msg: any) => new Date(msg.timestamp || 0).getTime()))
+            : 0
+
+          const latestGameStateHistory = latest.game_state_history || []
+          const latestLastGameStateTime = latestGameStateHistory.length > 0
+            ? Math.max(...latestGameStateHistory.map((state: any) => new Date(state.timestamp || 0).getTime()))
+            : 0
+
+          const latestActivityTime = Math.max(latestLastChatTime, latestLastGameStateTime, new Date(latest.created_at).getTime())
+
+          return lastActivityTime > latestActivityTime ? campaign : latest
+        })
+        
+        setLastPlayedCampaign(campaignWithLastActivity)
+      }
+    } catch (error) {
+      console.error('Error loading campaigns:', error)
+    }
+  }
+
+  const handleStartPlaying = () => {
+    if (lastPlayedCampaign) {
+      router.push(`/chat?campaign=${lastPlayedCampaign.id}`)
+    } else {
+      // Fallback to regular chat if no campaigns exist
+      router.push('/chat')
+    }
+  }
 
 
   if (loading) {
@@ -45,7 +104,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900">
+    <div className="h-screen bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900">
 
 
       <div className="container mx-auto px-4 py-16 max-w-6xl">
@@ -126,18 +185,25 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick Actions Bar */}
-        <div className="mt-16 max-w-4xl mx-auto">
-          <div className="bg-gray-800 border border-gray-700 rounded-2xl p-8 shadow-xl text-center">
-            <div className="group cursor-pointer" onClick={() => router.push('/chat')}>
-              <div className="text-5xl font-bold text-green-400 group-hover:text-green-300 transition-colors mb-3">
-                <span className="mr-3">🎮</span>
-                Start Playing
+        {/* Quick Actions Bar - Only show if user has campaigns */}
+        {campaigns.length > 0 && (
+          <div className="mt-16 max-w-4xl mx-auto">
+            <div className="bg-gray-800 border border-gray-700 rounded-2xl p-8 shadow-xl text-center">
+              <div className="group cursor-pointer" onClick={handleStartPlaying}>
+                <div className="text-5xl font-bold text-green-400 group-hover:text-green-300 transition-colors mb-3">
+                  <span className="mr-3">🎮</span>
+                  Continue Playing
+                </div>
+                <p className="text-gray-400 text-lg">
+                  {lastPlayedCampaign 
+                    ? `Pick up where you left off in "${lastPlayedCampaign.campaign_title}"` 
+                    : "Jump into your D&D adventure"
+                  }
+                </p>
               </div>
-              <p className="text-gray-400 text-lg">Jump into your D&D adventure</p>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
